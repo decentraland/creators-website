@@ -3,7 +3,7 @@ import { LinkIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { InfoTooltip } from '~/components/Tooltip'
 import { CollectionDisplayStatus, getCollectionDisplayStatus, type Collection } from '~/lib/collections'
-import * as S from './CollectionStatusPill.styles'
+import styles from './CollectionStatusPill.module.css'
 
 type Props = {
   collection: Collection
@@ -17,10 +17,10 @@ export function CollectionStatusPill({ collection, status: statusOverride, hint 
   const { t } = useTranslation()
   const status = statusOverride ?? getCollectionDisplayStatus(collection)
   return (
-    <S.Pill data-testid="collection-status" data-status={status}>
+    <span className={styles.pill} data-testid="collection-status" data-status={status}>
       {status === CollectionDisplayStatus.LINKED && <LinkIcon aria-hidden />}
       {t(`collection_status.${status}`)}
       {hint && <InfoTooltip placement="right" content={hint} testId="collection-status-hint" />}
-    </S.Pill>
+    </span>
   )
 }

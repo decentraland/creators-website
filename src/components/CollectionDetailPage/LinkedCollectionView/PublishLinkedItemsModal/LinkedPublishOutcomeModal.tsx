@@ -3,7 +3,7 @@ import { useTranslation } from '~/intl'
 import { type LinkedPublishError, type LinkedPublishFailureReason } from '~/lib/publishLinkedItems'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
-import * as S from './LinkedPublishRow.styles'
+import styles from './LinkedPublishRow.module.css'
 import { PublishSuccessModal } from '../../PublishCollectionModal/PublishSuccessModal'
 
 type Props = {
@@ -52,8 +52,8 @@ export function LinkedPublishOutcomeModal({ outcome, onClose, onRetry, onForgetP
       testId="publish-linked-error-modal"
     >
       {outcome.reason === 'payment_pending' && onForgetPayment && (
-        <S.Forget>
-          <S.ForgetText>{t('publish_linked_modal.error.forget_payment_note')}</S.ForgetText>
+        <div className={styles.forget}>
+          <p className={styles.forgetText}>{t('publish_linked_modal.error.forget_payment_note')}</p>
           <Button
             type="button"
             variant="secondary"
@@ -63,7 +63,7 @@ export function LinkedPublishOutcomeModal({ outcome, onClose, onRetry, onForgetP
           >
             {t('publish_linked_modal.error.forget_payment')}
           </Button>
-        </S.Forget>
+        </div>
       )}
     </ConfirmModal>
   )

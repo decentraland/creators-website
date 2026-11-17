@@ -10,7 +10,7 @@ import { openForumPost } from '~/lib/forumPost'
 import { openExternal } from '~/lib/navigation'
 import { shopCollectionUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
 import { JumpInIcon, OpenInNewIcon } from '~/components/Icons'
 import { CollectionActivityModal } from '~/components/CollectionActivityModal'
@@ -85,7 +85,7 @@ export function CollectionActionsMenu({
   const [isActivityOpen, setActivityOpen] = useState(false)
 
   // Small screens are mostly a viewer: copying and the role lists stay, deleting is desktop-only.
-  const compact = useMediaQuery(theme.media.noActions)
+  const compact = useMediaQuery(media.noActions)
 
   const isOnChain = collection.isPublished
   const isLinked = isLinkedCollection(collection)

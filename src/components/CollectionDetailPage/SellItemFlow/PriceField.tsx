@@ -16,7 +16,7 @@ import {
 } from '~/lib/sales'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { Select, type SelectOption } from '~/components/Select'
-import * as S from './SellItemModal.styles'
+import styles from './SellItemModal.module.css'
 
 export type PriceFormValues = {
   currency: PriceCurrency
@@ -118,12 +118,12 @@ export function PriceField({ label, values, onChange, free = false, disabled = f
 
   return (
     <>
-      <S.Label>{label}</S.Label>
-      <S.Box data-disabled={free || undefined} data-invalid={error !== null || undefined}>
+      <span className={styles.label}>{label}</span>
+      <div className={styles.box} data-disabled={free || undefined} data-invalid={error !== null || undefined}>
         {options.length === 1 ? (
-          <S.CurrencyGlyph data-testid={`${testId}-currency-glyph`}>
+          <span className={styles.currencyGlyph} data-testid={`${testId}-currency-glyph`}>
             <CurrencyAmount currency={options[0].value}>{null}</CurrencyAmount>
-          </S.CurrencyGlyph>
+          </span>
         ) : (
           <Select
             value={currency}
@@ -146,16 +146,24 @@ export function PriceField({ label, values, onChange, free = false, disabled = f
           data-currency={currency}
           onChange={event => changeAmount(event.target.value)}
         />
-        {usd && <S.Usd data-testid={`${testId}-usd`}>{usd}</S.Usd>}
-      </S.Box>
-      <S.Rate data-testid={`${testId}-rate`}>
+        {usd && (
+          <span className={styles.usd} data-testid={`${testId}-usd`}>
+            {usd}
+          </span>
+        )}
+      </div>
+      <span className={styles.rate} data-testid={`${testId}-rate`}>
         {currency === 'credits' || free
           ? t('sell_item_modal.price.rate', { usd: formatCreditsAsUsd(1) })
           : rate.data !== undefined
             ? t('sell_item_modal.price.mana_rate', { usd: formatManaAsUsd(ONE_MANA, rate.data) })
             : t('sell_item_modal.price.mana_min', { min: formatMana(MIN_SALE_MANA_WEI) })}
-      </S.Rate>
-      {error && <S.ErrorText data-testid={`${testId}-error`}>{error}</S.ErrorText>}
+      </span>
+      {error && (
+        <p className={styles.errorText} data-testid={`${testId}-error`}>
+          {error}
+        </p>
+      )}
     </>
   )
 }

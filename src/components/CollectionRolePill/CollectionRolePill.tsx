@@ -1,6 +1,7 @@
 import { useTranslation } from '~/intl'
 import { getCollectionRole, type Collection } from '~/lib/collections'
-import * as S from './CollectionRolePill.styles'
+import { cx } from '~/lib/cx'
+import styles from './CollectionRolePill.module.css'
 
 type Props = {
   collection: Collection
@@ -14,8 +15,8 @@ export function CollectionRolePill({ collection, address, className }: Props) {
   const role = getCollectionRole(collection, address)
   if (!role) return null
   return (
-    <S.Pill className={className} data-testid="collection-role" data-role={role}>
+    <span className={cx(styles.pill, className)} data-testid="collection-role" data-role={role}>
       {t(`collection_role.${role}`)}
-    </S.Pill>
+    </span>
   )
 }

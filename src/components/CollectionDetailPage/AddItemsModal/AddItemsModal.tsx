@@ -44,7 +44,8 @@ import { DraftProcessor } from '~/components/ItemDraftModal'
 import { VideoModal } from '~/components/VideoModal'
 import { LeaveConfirmModal } from './LeaveConfirmModal'
 import { UploadErrorModal } from './UploadErrorModal'
-import * as S from './AddItemsModal.styles'
+import draftModal from '~/components/ItemDraftModal/ItemDraftModal.module.css'
+import styles from './AddItemsModal.module.css'
 
 /** Values decided before the modal opened (the Blender live preview's tuning), applied to every draft. */
 export type AddItemsPrefill = {
@@ -473,7 +474,8 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
         testId="add-items-modal"
       >
         {/* `inert` isn't in React 18's typings, so it goes through the spread. */}
-        <S.Layout
+        <div
+          className={draftModal.layout}
           data-flush={!isSingle || undefined}
           data-uploading={isUploading || undefined}
           aria-busy={isUploading || undefined}
@@ -488,7 +490,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
               onRemove={id => dispatch({ type: 'draftRemoved', id })}
             />
           )}
-          <S.Main>
+          <div className={draftModal.main}>
             {selected && selected.status === 'ready' ? (
               <DraftForm
                 draft={selected}
@@ -509,7 +511,8 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
                 linked={isLinked ? { contract: linkedContract, updating: updateOnly } : undefined}
               />
             ) : (
-              <S.ProcessingPane
+              <div
+                className={draftModal.processingPane}
                 data-testid="draft-processing"
                 data-error={selected?.status === 'failed' ? (selected.errorKey ?? 'invalid_model_file') : undefined}
               >
@@ -517,15 +520,15 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
                   t(`add_items_modal.file_error.${selected.errorKey ?? 'invalid_model_file'}`, selected.errorParams)
                 ) : (
                   <>
-                    <S.ProcessingSpinner data-testid="draft-processing-spinner" aria-hidden />
+                    <span className={draftModal.processingSpinner} data-testid="draft-processing-spinner" aria-hidden />
                     {t('add_items_modal.processing')}
                   </>
                 )}
-              </S.ProcessingPane>
+              </div>
             )}
             {itemsFailed && (
-              <S.ItemsError role="alert" data-testid="add-items-items-error">
-                <S.ErrorText>{t('add_items_modal.items_error')}</S.ErrorText>
+              <div className={styles.itemsError} role="alert" data-testid="add-items-items-error">
+                <p className={draftModal.errorText}>{t('add_items_modal.items_error')}</p>
                 <Button
                   type="button"
                   size="sm"
@@ -535,9 +538,9 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
                 >
                   {t('add_items_modal.error.try_again')}
                 </Button>
-              </S.ItemsError>
+              </div>
             )}
-            <S.Footer>
+            <div className={draftModal.footer}>
               <Button
                 type="button"
                 variant="secondary"
@@ -547,7 +550,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
               >
                 {t('add_items_modal.cancel')}
               </Button>
-              <S.FooterRight>
+              <div className={draftModal.footerRight}>
                 {!isSingle && (
                   <Button
                     type="button"
@@ -584,10 +587,10 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
                     {t('add_items_modal.save_next')}
                   </Button>
                 )}
-              </S.FooterRight>
-            </S.Footer>
-          </S.Main>
-        </S.Layout>
+              </div>
+            </div>
+          </div>
+        </div>
         {previewDraft && (
           <DraftProcessor
             draft={previewDraft}

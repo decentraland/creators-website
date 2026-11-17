@@ -3,8 +3,10 @@ import { Button } from '~/components/Button'
 import { Confetti } from '~/components/Confetti'
 import { WarningIcon } from '~/components/Icons'
 import { Modal } from '~/components/Modal'
+import { cx } from '~/lib/cx'
 import { useNotifications } from '~/lib/notifications'
-import * as S from './ConfirmModal.styles'
+import styles from './ConfirmModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Action = {
   label: string
@@ -75,14 +77,25 @@ export function ConfirmModal({
       testId={testId}
     >
       {celebrate && <Confetti />}
-      <S.Wrap data-art={art ? 'image' : 'icon'}>
-        {art ? <S.Art src={art.src} alt="" /> : <S.IconWrap aria-hidden>{icon ?? <WarningIcon />}</S.IconWrap>}
-        <S.Heading data-testid={`${testId}-title`}>{title}</S.Heading>
-        <S.Body>
-          <S.Text data-testid={`${testId}-description`}>{description}</S.Text>
+      <div className={styles.wrap} data-art={art ? 'image' : 'icon'}>
+        {art ? (
+          <img className={styles.art} src={art.src} alt="" />
+        ) : (
+          <div className={styles.iconWrap} aria-hidden>
+            {icon ?? <WarningIcon />}
+          </div>
+        )}
+        <h3 className={styles.heading} data-testid={`${testId}-title`}>
+          {title}
+        </h3>
+        <div className={styles.body}>
+          <p className={styles.text} data-testid={`${testId}-description`}>
+            {description}
+          </p>
           {children}
-        </S.Body>
-        <S.Actions
+        </div>
+        <div
+          className={cx(shared.modalActions, styles.actions)}
           data-single={(!cancel || !confirm) && !fillActions ? '' : undefined}
           data-spread={spreadActions && cancel && confirm ? '' : undefined}
         >
@@ -102,8 +115,8 @@ export function ConfirmModal({
               {confirm.label}
             </Button>
           )}
-        </S.Actions>
-      </S.Wrap>
+        </div>
+      </div>
     </Modal>
   )
 }

@@ -3,7 +3,7 @@ import { useTranslation } from '~/intl'
 import { discountPct, isDiscountCapped, liveDiscountStatus, type CollectionDiscount } from '~/lib/coupons'
 import { Button } from '~/components/Button'
 import { SaleTag } from '../SaleTag'
-import * as S from './DiscountFlow.styles'
+import styles from './DiscountFlow.module.css'
 
 type Props = {
   discounts: CollectionDiscount[]
@@ -20,16 +20,21 @@ export function CollectionDiscounts({ discounts, now, onEnd }: Props) {
   if (discounts.length === 0) return null
   const date = (ms: number) => intl.formatDate(ms, { month: 'short', day: 'numeric' })
   return (
-    <S.Discounts aria-label={t('collection_discount.list_label')} data-testid="collection-discounts">
+    <ul
+      className={styles.discounts}
+      aria-label={t('collection_discount.list_label')}
+      data-testid="collection-discounts"
+    >
       {discounts.map(discount => {
         const scheduled = liveDiscountStatus(discount, now) === 'scheduled'
         return (
-          <S.DiscountChip
+          <li
+            className={styles.discountChip}
             key={discount.id}
             data-status={scheduled ? 'scheduled' : 'active'}
             data-testid="collection-discount"
           >
-            <S.DiscountTerms>
+            <div className={styles.discountTerms}>
               <SaleTag pct={discountPct(discount)} testId="discount-sale-tag" />
               <span>
                 {scheduled
@@ -47,7 +52,7 @@ export function CollectionDiscounts({ discounts, now, onEnd }: Props) {
                   {t('collection_discount.chip.others', { count: discount.collections.length - 1 })}
                 </span>
               )}
-            </S.DiscountTerms>
+            </div>
             {onEnd && (
               <Button
                 type="button"
@@ -61,9 +66,9 @@ export function CollectionDiscounts({ discounts, now, onEnd }: Props) {
                 {t('collection_discount.end.action')}
               </Button>
             )}
-          </S.DiscountChip>
+          </li>
         )
       })}
-    </S.Discounts>
+    </ul>
   )
 }

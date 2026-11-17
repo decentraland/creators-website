@@ -32,17 +32,19 @@ const UI2_STYLING = {
   name: 'decentraland-ui2',
   importNames: ['styled', 'keyframes', 'GlobalStyles'],
   message:
-    'Styled defs live only in *.styles.ts, through @emotion/styled. See docs/DECISIONS.md (Pre-monorepo refactor).'
+    'Components are styled with CSS Modules; ui2 styling helpers stay out. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 
-const STYLES_FILES = ['src/**/*.styles.ts']
+// The two Emotion files left, styling decentraland-ui2's Tooltip and Navbar until the monorepo replaces both.
+const STYLES_FILES = ['src/components/Tooltip/Tooltip.styles.ts', 'src/components/TopNav/TopNav.styles.ts']
 const EMOTION_ALL = {
   regex: '^@emotion/',
-  message: 'Styling is migrating to CSS Modules; add no new Emotion. See docs/DECISIONS.md (Pre-monorepo refactor).'
+  message: 'Components are styled with CSS Modules; add no Emotion. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 const EMOTION_EXCEPT_STYLED = {
   regex: '^@emotion/(?!styled(/|$))',
-  message: 'Only @emotion/styled is allowed, and only in *.styles.ts. See docs/DECISIONS.md (Pre-monorepo refactor).'
+  message:
+    'Only @emotion/styled, and only in the Tooltip and TopNav styles. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 const MUI = {
   regex: '^@mui/',
@@ -192,8 +194,8 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-restricted-imports': ['error', UI2] }
   },
 
-  // Pre-monorepo fence (docs/DECISIONS.md, "Pre-monorepo refactor"): the monorepo has no Emotion or MUI,
-  // so no new usage; @emotion/styled stays in *.styles.ts until the CSS Modules migration.
+  // Pre-monorepo fence (docs/DECISIONS.md, "Pre-monorepo refactor"): the monorepo has no Emotion or MUI, so no
+  // usage; @emotion/styled stays only in the Tooltip and TopNav styles, which wrap ui2 until the move.
   // The same rule keeps the builder-server transport inside src/lib/builder and components off its endpoints
   // (CONVENTIONS.md seam 5); component specs import endpoints to mock them, so they stay out of that block.
   {

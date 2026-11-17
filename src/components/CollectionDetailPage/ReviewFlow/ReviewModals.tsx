@@ -11,7 +11,7 @@ import { Tooltip } from '~/components/Tooltip'
 import { ItemValidationCard, toValidationSubject } from '~/components/ValidationBadge'
 import { useTranslation } from '~/intl'
 import { NOTE_MAX_LENGTH, VALIDATION_ATTEMPTS_PER_DAY, getValidationResetIn } from '~/lib/events'
-import * as Issues from '../PublishCollectionModal/ValidationIssuesView.styles'
+import issues from '../PublishCollectionModal/ValidationIssuesView.module.css'
 import { type ItemCheck } from '~/lib/validation'
 import styles from './ReviewFlow.module.css'
 
@@ -190,15 +190,17 @@ export function AutomatedIssuesModal({ results, onRequestReview, onClose }: Issu
       onClose={onClose}
       testId="automated-issues-modal"
     >
-      <Issues.Content data-variant="errors_blocking" data-testid="automated-issues-content">
-        <Issues.Header>
-          <Issues.HeaderIcon data-variant="errors" aria-hidden>
+      <div className={issues.content} data-variant="errors_blocking" data-testid="automated-issues-content">
+        <div className={issues.header}>
+          <span className={issues.headerIcon} data-variant="errors" aria-hidden>
             <ErrorIcon />
-          </Issues.HeaderIcon>
-          <Issues.Title data-testid="automated-issues-title">{t('review_flow.issues.title')}</Issues.Title>
-        </Issues.Header>
-        <Issues.Intro>{t('review_flow.issues.intro')}</Issues.Intro>
-        <Issues.List>
+          </span>
+          <h2 className={issues.title} data-testid="automated-issues-title">
+            {t('review_flow.issues.title')}
+          </h2>
+        </div>
+        <p className={issues.intro}>{t('review_flow.issues.intro')}</p>
+        <div className={issues.list}>
           {sorted.map(result => (
             <ItemValidationCard
               key={result.item.id}
@@ -207,8 +209,8 @@ export function AutomatedIssuesModal({ results, onRequestReview, onClose }: Issu
               testId={`automated-issues-${result.item.id}`}
             />
           ))}
-        </Issues.List>
-        <Issues.Footer data-single={onRequestReview ? undefined : ''}>
+        </div>
+        <div className={issues.footer} data-single={onRequestReview ? undefined : ''}>
           {onRequestReview && (
             <Button
               type="button"
@@ -222,8 +224,8 @@ export function AutomatedIssuesModal({ results, onRequestReview, onClose }: Issu
           <Button type="button" variant="primary" data-testid="automated-issues-back" onClick={onClose}>
             {t('review_flow.issues.back')}
           </Button>
-        </Issues.Footer>
-      </Issues.Content>
+        </div>
+      </div>
     </Modal>
   )
 }

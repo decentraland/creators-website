@@ -1,7 +1,7 @@
 import { useTranslation } from '~/intl'
 import { ItemRowStatus } from '~/lib/itemSync'
 import { InfoTooltip } from '~/components/Tooltip'
-import * as S from './ItemSyncPill.styles'
+import styles from './ItemSyncPill.module.css'
 
 type Props = {
   status: ItemRowStatus
@@ -12,9 +12,9 @@ export function ItemSyncPill({ status }: Props) {
   const { t } = useTranslation()
   const hint = status === ItemRowStatus.PUBLISHED ? null : t(`collection_detail_page.item_status.${status}_hint`)
   return (
-    <S.Pill data-testid="item-sync-status" data-status={status}>
+    <span className={styles.pill} data-testid="item-sync-status" data-status={status}>
       {t(`collection_detail_page.item_status.${status}`)}
       {hint && <InfoTooltip content={hint} testId="item-sync-status-hint" />}
-    </S.Pill>
+    </span>
   )
 }

@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDropDownIcon as ChevronIcon, ExpandMoreIcon as CompactChevronIcon } from '~/components/Icons'
-import * as S from './Select.styles'
+import styles from './Select.module.css'
 import { useListbox } from './useListbox'
 
 export type SelectOption<T extends string> = {
@@ -57,8 +57,9 @@ export function Select<T extends string>({
   const selected = options.find(option => option.value === value)
 
   return (
-    <S.Wrap ref={wrapRef} onKeyDown={onKeyDown}>
-      <S.Trigger
+    <div className={styles.wrap} ref={wrapRef} onKeyDown={onKeyDown}>
+      <button
+        className={styles.trigger}
         type="button"
         role="combobox"
         aria-haspopup="listbox"
@@ -72,23 +73,32 @@ export function Select<T extends string>({
         data-tone={tone}
         onClick={toggle}
       >
-        {inlineLabel && <S.InlineLabel>{inlineLabel}</S.InlineLabel>}
+        {inlineLabel && <span className={styles.inlineLabel}>{inlineLabel}</span>}
         {variant === 'glyph' ? (
-          <S.OptionLabel title={selected?.label}>{selected?.icon}</S.OptionLabel>
+          <span className={styles.optionLabel} title={selected?.label}>
+            {selected?.icon}
+          </span>
         ) : (
-          <S.TriggerLabel data-placeholder={selected ? undefined : true} data-align={inlineLabel ? 'end' : undefined}>
-            <S.OptionLabel>
+          <span
+            className={styles.triggerLabel}
+            data-placeholder={selected ? undefined : true}
+            data-align={inlineLabel ? 'end' : undefined}
+          >
+            <span className={styles.optionLabel}>
               {selected?.icon}
               <span>{selected ? (selected.triggerLabel ?? selected.label) : placeholder}</span>
-            </S.OptionLabel>
-            {selected?.trailing && !selected.triggerLabel && <S.Trailing>{selected.trailing}</S.Trailing>}
-          </S.TriggerLabel>
+            </span>
+            {selected?.trailing && !selected.triggerLabel && (
+              <span className={styles.trailing}>{selected.trailing}</span>
+            )}
+          </span>
         )}
         {variant === 'compact' ? <CompactChevronIcon /> : <ChevronIcon />}
-      </S.Trigger>
+      </button>
       {open &&
         createPortal(
-          <S.Listbox
+          <ul
+            className={styles.listbox}
             ref={listRef}
             role="listbox"
             id={listId}
@@ -98,8 +108,9 @@ export function Select<T extends string>({
             onKeyDown={onKeyDown}
           >
             {options.map(option => (
-              <S.OptionGroup key={option.value} data-divider={option.dividerBefore || undefined}>
-                <S.Option
+              <li className={styles.optionGroup} key={option.value} data-divider={option.dividerBefore || undefined}>
+                <div
+                  className={styles.option}
                   role="option"
                   aria-selected={option.value === value}
                   data-active={option.value === active || undefined}
@@ -108,17 +119,17 @@ export function Select<T extends string>({
                   onMouseLeave={() => setActive(value)}
                   onClick={() => pick(option.value)}
                 >
-                  <S.OptionLabel>
+                  <span className={styles.optionLabel}>
                     {option.icon}
                     <span>{option.label}</span>
-                  </S.OptionLabel>
-                  {option.trailing && <S.Trailing>{option.trailing}</S.Trailing>}
-                </S.Option>
-              </S.OptionGroup>
+                  </span>
+                  {option.trailing && <span className={styles.trailing}>{option.trailing}</span>}
+                </div>
+              </li>
             ))}
-          </S.Listbox>,
+          </ul>,
           document.body
         )}
-    </S.Wrap>
+    </div>
   )
 }

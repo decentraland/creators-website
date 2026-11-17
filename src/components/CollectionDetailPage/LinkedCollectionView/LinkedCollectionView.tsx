@@ -57,7 +57,7 @@ import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
 import { useSaveItem } from '~/hooks/useSaveItem'
 import { createItemSaveQueue } from '~/lib/itemSaveQueue'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { Button } from '~/components/Button'
 import { CollectionActionsMenu } from '~/components/CollectionActionsMenu'
 import { CollectionNameModal } from '~/components/CollectionNameModal'
@@ -76,12 +76,13 @@ import { Pagination } from '~/components/Pagination'
 import { Tooltip } from '~/components/Tooltip'
 import addItemsArt from '~/assets/add-items.png'
 import { AddItemsModal } from '../AddItemsModal'
-import * as P from '../CollectionDetailPage.styles'
+import detail from '../CollectionDetailPage.module.css'
+import styles from './LinkedCollectionView.module.css'
+import shared from '~/styles/shared.module.css'
 import { LinkedItemActionsMenu } from './LinkedItemActionsMenu'
 import { LinkedItemRow, nextMappingStates } from './LinkedItemRow'
 import { PublishLinkedItemsModal } from './PublishLinkedItemsModal'
 import { PushLinkedChangesModal } from './PushLinkedChangesModal'
-import * as S from './LinkedCollectionView.styles'
 
 type RelinkView =
   | { kind: 'form'; last?: LinkedContract }
@@ -117,7 +118,7 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
   const showToast = useNotifications(state => state.showToast)
   const [searchParams, setSearchParams] = useSearchParams()
   const filter = parseLinkedItemFilter(searchParams.get('filter'))
-  const compact = useMediaQuery(theme.media.noActions)
+  const compact = useMediaQuery(media.noActions)
   const filesInputRef = useRef<HTMLInputElement>(null)
 
   const itemsPage = useLinkedCollectionItems(address, collection, page, filter)
@@ -445,32 +446,36 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
 
   return (
     <>
-      <P.Header>
-        <P.HeaderLeft>
-          <P.BackLink
+      <div className={detail.header}>
+        <div className={detail.headerLeft}>
+          <button
+            className={detail.backLink}
             type="button"
             aria-label={t('collection_detail_page.back')}
             data-testid="back-to-collections"
             onClick={onBack}
           >
             <ArrowBackIcon />
-          </P.BackLink>
-          <P.TitleGroup>
-            <P.Title title={collection.name}>{collection.name}</P.Title>
+          </button>
+          <div className={detail.titleGroup}>
+            <h1 className={detail.title} title={collection.name}>
+              {collection.name}
+            </h1>
             {canEditCollection && (
-              <P.RenameButton
+              <button
+                className={detail.renameButton}
                 type="button"
                 aria-label={t('collection_detail_page.rename')}
                 data-testid="rename-collection"
                 onClick={() => setRenameOpen(true)}
               >
                 <EditIcon fontSize="small" />
-              </P.RenameButton>
+              </button>
             )}
-          </P.TitleGroup>
+          </div>
           <CollectionStatusPill collection={collection} />
-        </P.HeaderLeft>
-        <P.HeaderActions>
+        </div>
+        <div className={detail.headerActions}>
           {hasWork && (
             <Tooltip
               content={publishBlocker ? t(`linked_collection.publish_blocker.${publishBlocker}`) : null}
@@ -511,62 +516,66 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
             onEditInBulk={canEdit && total > 0 ? () => bulkInputRef.current?.click() : undefined}
             onDeleted={() => navigate('/collections', { replace: true })}
           />
-        </P.HeaderActions>
-      </P.Header>
+        </div>
+      </div>
 
-      <S.ContractRow data-testid="linked-contract">
+      <div className={styles.contractRow} data-testid="linked-contract">
         {thirdParty?.name && (
-          <S.ContractField>
-            <S.ContractLabel>{t('linked_collection.third_party')}</S.ContractLabel>
-            <S.ContractValue data-testid="linked-third-party">{thirdParty.name}</S.ContractValue>
-          </S.ContractField>
+          <div className={styles.contractField}>
+            <span className={styles.contractLabel}>{t('linked_collection.third_party')}</span>
+            <span className={styles.contractValue} data-testid="linked-third-party">
+              {thirdParty.name}
+            </span>
+          </div>
         )}
         {/* A virtual third party has no kind yet: it is chosen in its first publish. */}
         {thirdParty && (thirdParty.published || thirdParty.isProgrammatic) && (
-          <S.ContractField>
-            <S.ContractLabel>{t('linked_collection.kind_label')}</S.ContractLabel>
-            <S.ContractValue data-testid="third-party-kind">
+          <div className={styles.contractField}>
+            <span className={styles.contractLabel}>{t('linked_collection.kind_label')}</span>
+            <span className={styles.contractValue} data-testid="third-party-kind">
               {t(`linked_collection.kind.${thirdParty.isProgrammatic ? 'programmatic' : 'standard'}`)}
-            </S.ContractValue>
-          </S.ContractField>
+            </span>
+          </div>
         )}
         {network && (
-          <S.ContractField>
-            <S.ContractLabel>{t('linked_collection.network')}</S.ContractLabel>
-            <S.ContractValue data-testid="linked-network">
+          <div className={styles.contractField}>
+            <span className={styles.contractLabel}>{t('linked_collection.network')}</span>
+            <span className={styles.contractValue} data-testid="linked-network">
               {REGISTRY_NETWORKS.has(network) ? t(`linked_collection.networks.${network}`) : network}
-            </S.ContractValue>
-          </S.ContractField>
+            </span>
+          </div>
         )}
         {contractAddress && (
-          <S.ContractField>
-            <S.ContractLabel>{t('linked_collection.contract')}</S.ContractLabel>
-            <S.ContractValue data-testid="linked-contract-address" title={contractAddress}>
+          <div className={styles.contractField}>
+            <span className={styles.contractLabel}>{t('linked_collection.contract')}</span>
+            <span className={styles.contractValue} data-testid="linked-contract-address" title={contractAddress}>
               {shortenAddress(contractAddress)}
-              <S.CopyButton
+              <button
+                className={styles.copyButton}
                 type="button"
                 aria-label={t('linked_collection.copy_contract')}
                 data-testid="copy-linked-contract"
                 onClick={() => void copyContract()}
               >
                 <ContentCopyIcon fontSize="small" />
-              </S.CopyButton>
-            </S.ContractValue>
-          </S.ContractField>
+              </button>
+            </span>
+          </div>
         )}
-      </S.ContractRow>
+      </div>
 
       {collection.isMappingComplete === false && (
-        <S.Banner data-testid="linked-migration-banner">
+        <div className={styles.banner} data-testid="linked-migration-banner">
           <WarningIcon fontSize="small" />
           {t('linked_collection.migration_banner')}
-        </S.Banner>
+        </div>
       )}
 
-      <P.SubHeader>
-        <P.FilterChips data-testid="linked-filters">
+      <div className={detail.subHeader}>
+        <div className={detail.filterChips} data-testid="linked-filters">
           {filters.map(value => (
-            <P.FilterChip
+            <button
+              className={detail.filterChip}
               key={value}
               type="button"
               data-active={filter === value || undefined}
@@ -574,10 +583,10 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
               onClick={() => changeFilter(value)}
             >
               {t(`linked_collection.filter.${value}`)}
-            </P.FilterChip>
+            </button>
           ))}
-        </P.FilterChips>
-        <P.SubActions>
+        </div>
+        <div className={detail.subActions}>
           <Button
             variant="secondary"
             type="button"
@@ -598,13 +607,13 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
               {t('collection_detail_page.add_items')}
             </Button>
           )}
-        </P.SubActions>
-      </P.SubHeader>
+        </div>
+      </div>
 
       {loadFailed ? (
-        <P.Panel data-testid="linked-items-error">
-          <P.PanelTitle>{t('linked_collection.load_error.title')}</P.PanelTitle>
-          <P.PanelText>{t('linked_collection.load_error.description')}</P.PanelText>
+        <section className={shared.panel} data-testid="linked-items-error">
+          <h2 className={shared.panelTitle}>{t('linked_collection.load_error.title')}</h2>
+          <p className={shared.panelText}>{t('linked_collection.load_error.description')}</p>
           <Button
             type="button"
             variant="secondary"
@@ -613,12 +622,12 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
           >
             {t('linked_collection.load_error.retry')}
           </Button>
-        </P.Panel>
+        </section>
       ) : isEmpty && filter === LinkedItemFilter.ALL ? (
-        <P.Panel data-testid="collection-empty">
-          <P.DropArt src={addItemsArt} alt="" />
-          <P.PanelTitle>{t('linked_collection.empty.title')}</P.PanelTitle>
-          <P.PanelText>{t('linked_collection.empty.description')}</P.PanelText>
+        <section className={shared.panel} data-testid="collection-empty">
+          <img className={detail.dropArt} src={addItemsArt} alt="" />
+          <h2 className={shared.panelTitle}>{t('linked_collection.empty.title')}</h2>
+          <p className={shared.panelText}>{t('linked_collection.empty.description')}</p>
           {canEdit && (
             <Button
               type="button"
@@ -630,17 +639,17 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
               {t('collection_detail_page.add_items')}
             </Button>
           )}
-        </P.Panel>
+        </section>
       ) : isEmpty ? (
-        <P.Panel data-testid="collection-no-items">
-          <P.PanelTitle>{t('linked_collection.no_results.title')}</P.PanelTitle>
-          <P.PanelText>{t('linked_collection.no_results.description')}</P.PanelText>
-        </P.Panel>
+        <section className={shared.panel} data-testid="collection-no-items">
+          <h2 className={shared.panelTitle}>{t('linked_collection.no_results.title')}</h2>
+          <p className={shared.panelText}>{t('linked_collection.no_results.description')}</p>
+        </section>
       ) : (
         <>
-          <S.List data-testid="items-list" aria-busy={itemsPage.isFetching || undefined}>
-            <S.ListHeader data-selecting={selectedCount > 0 || undefined}>
-              <S.HeaderSelect>
+          <div className={styles.list} data-testid="items-list" aria-busy={itemsPage.isFetching || undefined}>
+            <div className={styles.listHeader} data-selecting={selectedCount > 0 || undefined}>
+              <span className={styles.headerSelect}>
                 <input
                   ref={headerCheckbox}
                   type="checkbox"
@@ -650,15 +659,15 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                   data-testid="linked-select-all"
                   onChange={event => togglePage(event.target.checked)}
                 />
-              </S.HeaderSelect>
+              </span>
               {selectedCount > 0 ? (
-                <S.SelectionSummary data-testid="linked-selection">
-                  <S.SelectionCount data-testid="linked-selection-count">
+                <div className={styles.selectionSummary} data-testid="linked-selection">
+                  <span className={styles.selectionCount} data-testid="linked-selection-count">
                     {t(allAcrossSelected ? 'linked_collection.selected_all' : 'linked_collection.selected', {
                       count: selectedCount
                     })}
-                  </S.SelectionCount>
-                  <S.SelectionActions>
+                  </span>
+                  <div className={styles.selectionActions}>
                     {canSelectAcross && (
                       <Button
                         type="button"
@@ -681,8 +690,8 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                     >
                       {t('linked_collection.clear_selection')}
                     </Button>
-                  </S.SelectionActions>
-                </S.SelectionSummary>
+                  </div>
+                </div>
               ) : (
                 <>
                   <span data-name>{t('collection_detail_page.list.item')}</span>
@@ -690,21 +699,22 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                   <span>
                     {t('linked_collection.list.status')}
                     {curations.isError && (
-                      <S.StatusRetry
+                      <button
+                        className={styles.statusRetry}
                         type="button"
                         data-testid="linked-item-status-retry"
                         disabled={curations.isFetching}
                         onClick={() => void curations.refetch()}
                       >
                         {t('linked_collection.item_status.retry')}
-                      </S.StatusRetry>
+                      </button>
                     )}
                   </span>
                   <span>{t('linked_collection.list.mapping')}</span>
                   <span>{t('collection_detail_page.list.actions')}</span>
                 </>
               )}
-            </S.ListHeader>
+            </div>
             {items.map(item => (
               <LinkedItemRow
                 key={item.id}
@@ -730,16 +740,16 @@ export function LinkedCollectionView({ collection, thirdParty, session, page, on
                 }
               />
             ))}
-          </S.List>
-          <P.FooterRow>
-            <P.ShowingCount data-testid="items-showing">
+          </div>
+          <div className={shared.footerRow}>
+            <span className={shared.showingCount} data-testid="items-showing">
               {t('collection_detail_page.showing', {
                 range: pageRangeLabel(page, LINKED_ITEMS_PAGE_SIZE, items.length),
                 total
               })}
-            </P.ShowingCount>
+            </span>
             {pages > 1 && <Pagination page={page} pages={pages} onPageChange={onPageChange} />}
-          </P.FooterRow>
+          </div>
         </>
       )}
 

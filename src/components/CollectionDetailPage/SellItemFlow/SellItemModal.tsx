@@ -30,7 +30,8 @@ import { BeneficiaryInput } from './BeneficiaryInput'
 import { DEFAULT_PRICE_VALUES, PriceField, type PriceFormValues } from './PriceField'
 import { SellItemCard } from './SellItemCard'
 import { Switch } from '~/components/Switch'
-import * as S from './SellItemModal.styles'
+import { cx } from '~/lib/cx'
+import styles from './SellItemModal.module.css'
 
 const DATE_LOCALES: Record<Locale, DateLocale> = { en: enUS, es, zh: zhCN }
 
@@ -138,20 +139,25 @@ export function SellItemModal({
       closeDisabled={busy}
       testId="sell-item-modal"
     >
-      <S.Divider />
-      <S.Form onSubmit={handleSubmit} data-testid="sell-item-form">
-        <S.Fields data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
+      <hr className={styles.divider} />
+      <form className={styles.form} onSubmit={handleSubmit} data-testid="sell-item-form">
+        <div
+          className={styles.fields}
+          data-busy={busy || undefined}
+          aria-busy={busy || undefined}
+          {...(busy ? { inert: '' } : {})}
+        >
           <SellItemCard item={item} />
           {hasPendingChanges && (
-            <S.Note data-variant="warning" data-testid="sell-pending-changes">
+            <div className={styles.note} data-variant="warning" data-testid="sell-pending-changes">
               <WarningIcon aria-hidden />
               <p>{t('sell_item_modal.pending_changes')}</p>
-            </S.Note>
+            </div>
           )}
-          <S.Subtitle>{t('sell_item_modal.subtitle')}</S.Subtitle>
+          <h3 className={styles.subtitle}>{t('sell_item_modal.subtitle')}</h3>
 
-          <S.Field>
-            <S.Label>{t('sell_item_modal.beneficiary.label')}</S.Label>
+          <div className={styles.field}>
+            <span className={styles.label}>{t('sell_item_modal.beneficiary.label')}</span>
             <Checkbox
               checked={values.selfBeneficiary}
               onChange={checked => update({ selfBeneficiary: checked })}
@@ -170,9 +176,9 @@ export function SellItemModal({
                 testId="sell-beneficiary"
               />
             )}
-          </S.Field>
+          </div>
 
-          <S.Field>
+          <div className={styles.field}>
             <PriceField
               label={t('sell_item_modal.price.label')}
               values={values.price}
@@ -184,11 +190,13 @@ export function SellItemModal({
             <Checkbox checked={values.free} onChange={free => update({ free })} disabled={busy} testId="sell-free">
               {t('sell_item_modal.price.giveaway')}
             </Checkbox>
-          </S.Field>
+          </div>
 
-          <S.Field>
-            <S.Row>
-              <S.Label id="sell-expiration-label">{t('sell_item_modal.expiration.label')}</S.Label>
+          <div className={styles.field}>
+            <div className={styles.row}>
+              <span className={styles.label} id="sell-expiration-label">
+                {t('sell_item_modal.expiration.label')}
+              </span>
               <Switch
                 checked={values.withExpiration}
                 onChange={withExpiration => update({ withExpiration })}
@@ -196,9 +204,9 @@ export function SellItemModal({
                 label={t('sell_item_modal.expiration.label')}
                 testId="sell-expiration-toggle"
               />
-            </S.Row>
+            </div>
             {values.withExpiration && (
-              <S.DateField>
+              <div className={cx(styles.box, styles.dateField)}>
                 <CalendarIcon aria-hidden />
                 <DatePicker
                   selected={expirationDate}
@@ -214,11 +222,11 @@ export function SellItemModal({
                   ariaLabelledBy="sell-expiration-label"
                   customInput={<input data-testid="sell-expiration-date" />}
                 />
-              </S.DateField>
+              </div>
             )}
-          </S.Field>
+          </div>
 
-          <S.Note data-testid="sell-note" data-currency={noteCurrency}>
+          <div className={styles.note} data-testid="sell-note" data-currency={noteCurrency}>
             <InfoIcon aria-hidden />
             <p>
               {noteCurrency === 'mana'
@@ -235,18 +243,18 @@ export function SellItemModal({
                     }
                   )}
             </p>
-          </S.Note>
-        </S.Fields>
+          </div>
+        </div>
 
-        <S.Footer>
+        <div className={styles.footer}>
           <Button type="button" variant="secondary" disabled={busy} data-testid="sell-cancel" onClick={onClose}>
             {t('sell_item_modal.cancel')}
           </Button>
           <Button type="submit" loading={busy} disabled={!canSubmit} data-testid="sell-submit">
             {t('sell_item_modal.submit')}
           </Button>
-        </S.Footer>
-      </S.Form>
+        </div>
+      </form>
     </Modal>
   )
 }

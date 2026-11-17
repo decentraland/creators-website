@@ -9,7 +9,7 @@ import { type Collection } from '~/lib/collections'
 import { type CollectionCuration } from '~/lib/curation'
 import { REJECT_REASON_CODES, type RejectReasonCode } from '~/lib/events'
 import { useNotifications } from '~/lib/notifications'
-import { ModalActions } from '~/styles/shared'
+import shared from '~/styles/shared.module.css'
 import styles from './RejectCurationModal.module.css'
 
 export const REJECTION_MESSAGE_MAX_LENGTH = 3000
@@ -124,7 +124,7 @@ export function RejectCurationModal({ collection, curation, address, onClose, on
             {t('reject_curation_modal.error')}
           </p>
         )}
-        <ModalActions>
+        <div className={shared.modalActions}>
           <Button
             type="button"
             variant="secondary"
@@ -137,7 +137,7 @@ export function RejectCurationModal({ collection, curation, address, onClose, on
           <Button type="submit" loading={reject.isPending} disabled={!canSubmit} data-testid="reject-curation-confirm">
             {t('reject_curation_modal.confirm')}
           </Button>
-        </ModalActions>
+        </div>
       </form>
     </Modal>
   )

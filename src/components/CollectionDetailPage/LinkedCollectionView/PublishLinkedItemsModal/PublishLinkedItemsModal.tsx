@@ -26,7 +26,8 @@ import { Modal } from '~/components/Modal'
 import { PendingModal } from '~/components/PendingModal'
 import { StepIndicator } from '~/components/StepIndicator'
 import { ConfirmNameStep } from '../../PublishCollectionModal/ConfirmNameStep'
-import * as S from '../../PublishCollectionModal/PublishCollectionModal.styles'
+import styles from '~/components/CollectionDetailPage/PublishCollectionModal/PublishCollectionModal.module.css'
+import shared from '~/styles/shared.module.css'
 import { LinkedItemsStep } from './LinkedItemsStep'
 import { LinkedKindStep } from './LinkedKindStep'
 import { LinkedPaymentStep } from './LinkedPaymentStep'
@@ -280,13 +281,13 @@ export function PublishLinkedItemsModal({
       closeDisabled={busy}
       testId="publish-linked-modal"
     >
-      <S.Main>
+      <div className={styles.main}>
         <StepIndicator current={stepIndex + 1} total={steps.length} testId="publish-linked-steps" />
         {step === 'name' &&
           (profile.isLoading ? (
-            <S.InlineNote data-testid="publish-name-loading">
-              <S.Spinner aria-hidden />
-            </S.InlineNote>
+            <p className={styles.inlineNote} data-testid="publish-name-loading">
+              <span className={shared.spinner} aria-hidden />
+            </p>
           ) : (
             <ConfirmNameStep
               initialName={collection.name}
@@ -347,7 +348,7 @@ export function PublishLinkedItemsModal({
             onSubmit={() => void submit()}
           />
         )}
-      </S.Main>
+      </div>
     </Modal>
   )
 }

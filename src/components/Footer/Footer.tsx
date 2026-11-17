@@ -5,7 +5,7 @@ import { useAfterLoadIdle } from '~/hooks/useAfterLoadIdle'
 import { useLocale, LOCALES, type Locale } from '~/store/locale'
 import { englishMessage, useTranslation } from '~/intl'
 import { isOverviewPath, LandingPlace, trackLandingClick } from '~/lib/overviewAnalytics'
-import * as S from './Footer.styles'
+import styles from './Footer.module.css'
 
 // The full Decentraland footer — the large purple footer with newsletter, MENU columns, social links
 // and the dark legal bar. Ported from shop's ShopFooter.
@@ -54,7 +54,7 @@ const LANGUAGE_LABELS: Record<Locale, { label: string; flag: string }> = {
 
 const SocialRow = ({ onTrack }: { onTrack: (platform: string) => void }) => {
   return (
-    <S.Social>
+    <div className={styles.social}>
       {socialLinks.map(({ name, url, icon: Icon }) => (
         <a
           key={name}
@@ -68,7 +68,7 @@ const SocialRow = ({ onTrack }: { onTrack: (platform: string) => void }) => {
           <Icon />
         </a>
       ))}
-    </S.Social>
+    </div>
   )
 }
 
@@ -121,14 +121,15 @@ const Footer = () => {
   const toggle = (key: string) => setOpenSection(prev => (prev === key ? null : key))
 
   return (
-    <S.Footer>
-      <S.Main>
-        <S.Left>
-          <S.Wordmark>Decentraland</S.Wordmark>
+    <footer className={styles.footer}>
+      <div className={styles.main}>
+        <div className={styles.left}>
+          <span className={styles.wordmark}>Decentraland</span>
 
-          <S.News ref={newsRef}>
-            <S.NewsTitle>{t('footer.newsletterTitle')}</S.NewsTitle>
-            <S.NewsFrame
+          <div className={styles.news} ref={newsRef}>
+            <p className={styles.newsTitle}>{t('footer.newsletterTitle')}</p>
+            <iframe
+              className={styles.newsFrame}
               src={newsNear ? BEEHIIV_EMBED_URL : undefined}
               // Cross-origin embed: it may run and submit its form, never navigate this page or open unscoped windows.
               sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
@@ -138,19 +139,20 @@ const Footer = () => {
               scrolling="no"
               title={t('footer.newsletterFrameTitle')}
             />
-          </S.News>
+          </div>
 
-          <S.Connect data-variant="desktop">
-            <S.Label>{t('footer.connect')}</S.Label>
+          <div className={styles.connect} data-variant="desktop">
+            <p className={styles.label}>{t('footer.connect')}</p>
             <SocialRow onTrack={trackSocial} />
-          </S.Connect>
-        </S.Left>
+          </div>
+        </div>
 
-        <S.Right>
-          <S.Col>
-            <S.Label>{t('footer.gettingStarted')}</S.Label>
+        <div className={styles.right}>
+          <div className={styles.col}>
+            <p className={styles.label}>{t('footer.gettingStarted')}</p>
             {gettingStartedLinks.map(l => (
-              <S.FootLink
+              <a
+                className={styles.footLink}
                 key={l.label}
                 href={l.url}
                 target="_blank"
@@ -159,13 +161,14 @@ const Footer = () => {
                 onClick={() => trackLink(l.label)}
               >
                 {t(l.label)}
-              </S.FootLink>
+              </a>
             ))}
-          </S.Col>
-          <S.Col>
-            <S.Label>{t('footer.resources')}</S.Label>
+          </div>
+          <div className={styles.col}>
+            <p className={styles.label}>{t('footer.resources')}</p>
             {resourceLinks.map(l => (
-              <S.FootLink
+              <a
+                className={styles.footLink}
                 key={l.label}
                 href={l.url}
                 target="_blank"
@@ -174,20 +177,21 @@ const Footer = () => {
                 onClick={() => trackLink(l.label)}
               >
                 {t(l.label)}
-              </S.FootLink>
+              </a>
             ))}
-          </S.Col>
-        </S.Right>
+          </div>
+        </div>
 
         {/* Mobile-only collapsible menu. */}
-        <S.MobileMenu>
-          <S.MenuLabel>{t('footer.menu')}</S.MenuLabel>
+        <div className={styles.mobileMenu}>
+          <p className={styles.menuLabel}>{t('footer.menu')}</p>
           {[
             { key: 'getting-started', label: t('footer.gettingStarted'), links: gettingStartedLinks },
             { key: 'resources', label: t('footer.resources'), links: resourceLinks }
           ].map(section => (
             <div key={section.key}>
-              <S.Dropdown
+              <button
+                className={styles.dropdown}
                 type="button"
                 aria-expanded={openSection === section.key}
                 aria-controls={`footer-section-${section.key}`}
@@ -195,13 +199,18 @@ const Footer = () => {
                 onClick={() => toggle(section.key)}
               >
                 {section.label}
-                <S.Chev data-open={openSection === section.key || undefined}>
+                <span className={styles.chev} data-open={openSection === section.key || undefined}>
                   <ChevronDown />
-                </S.Chev>
-              </S.Dropdown>
-              <S.DropContent id={`footer-section-${section.key}`} data-open={openSection === section.key || undefined}>
+                </span>
+              </button>
+              <div
+                className={styles.dropContent}
+                id={`footer-section-${section.key}`}
+                data-open={openSection === section.key || undefined}
+              >
                 {section.links.map(l => (
-                  <S.MLink
+                  <a
+                    className={styles.mLink}
                     key={l.label}
                     href={l.url}
                     target="_blank"
@@ -209,31 +218,37 @@ const Footer = () => {
                     onClick={() => trackLink(l.label)}
                   >
                     {t(l.label)}
-                  </S.MLink>
+                  </a>
                 ))}
-              </S.DropContent>
+              </div>
             </div>
           ))}
-        </S.MobileMenu>
+        </div>
 
-        <S.Connect data-variant="mobile">
-          <S.Label>{t('footer.connect')}</S.Label>
+        <div className={styles.connect} data-variant="mobile">
+          <p className={styles.label}>{t('footer.connect')}</p>
           <SocialRow onTrack={trackSocial} />
-        </S.Connect>
-      </S.Main>
+        </div>
+      </div>
 
-      <S.Bottom>
-        <S.BottomLeft>
-          <S.Lang ref={langRef}>
-            <S.LangBtn ref={langBtnRef} type="button" aria-expanded={langOpen} onClick={() => setLangOpen(o => !o)}>
+      <div className={styles.bottom}>
+        <div className={styles.bottomLeft}>
+          <div className={styles.lang} ref={langRef}>
+            <button
+              className={styles.langBtn}
+              ref={langBtnRef}
+              type="button"
+              aria-expanded={langOpen}
+              onClick={() => setLangOpen(o => !o)}
+            >
               <span aria-hidden>{current.flag}</span>
               {current.label}
-              <S.Chev data-open={langOpen || undefined}>
+              <span className={styles.chev} data-open={langOpen || undefined}>
                 <ChevronDown />
-              </S.Chev>
-            </S.LangBtn>
+              </span>
+            </button>
             {langOpen ? (
-              <S.LangMenu>
+              <div className={styles.langMenu}>
                 {LOCALES.map(code => (
                   <button
                     key={code}
@@ -248,22 +263,22 @@ const Footer = () => {
                     {LANGUAGE_LABELS[code].label}
                   </button>
                 ))}
-              </S.LangMenu>
+              </div>
             ) : null}
-          </S.Lang>
+          </div>
 
-          <S.Legal>
+          <div className={styles.legal}>
             {legalLinks.map(l => (
-              <S.LegalLink key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
+              <a className={styles.legalLink} key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
                 {t(l.label)}
-              </S.LegalLink>
+              </a>
             ))}
-          </S.Legal>
-        </S.BottomLeft>
+          </div>
+        </div>
 
-        <S.Copy>&copy; {new Date().getFullYear()} Decentraland</S.Copy>
-      </S.Bottom>
-    </S.Footer>
+        <span className={styles.copy}>&copy; {new Date().getFullYear()} Decentraland</span>
+      </div>
+    </footer>
   )
 }
 

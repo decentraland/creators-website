@@ -1,7 +1,7 @@
 import { useState, type KeyboardEvent, type RefObject } from 'react'
 import { CloseIcon as RemoveIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
-import * as S from '../ItemEditorPage.styles'
+import styles from '../ItemEditorPage.module.css'
 
 type Props = {
   tags: string[]
@@ -36,10 +36,15 @@ export function TagsInput({ tags, disabled = false, onChange, inputRef, testId =
   }
 
   return (
-    <S.Field as="div">
-      <S.Chips data-testid={testId}>
+    <div className={styles.field}>
+      <div className={styles.chips} data-testid={testId}>
         {tags.map(tag => (
-          <S.TagChip key={tag} data-testid={`${testId}-tag`} data-readonly={disabled || undefined}>
+          <span
+            className={styles.tagChip}
+            key={tag}
+            data-testid={`${testId}-tag`}
+            data-readonly={disabled || undefined}
+          >
             {tag}
             {!disabled && (
               <button
@@ -51,14 +56,17 @@ export function TagsInput({ tags, disabled = false, onChange, inputRef, testId =
                 <RemoveIcon style={{ fontSize: 14 }} />
               </button>
             )}
-          </S.TagChip>
+          </span>
         ))}
-      </S.Chips>
+      </div>
       {disabled && tags.length === 0 && (
-        <S.SectionNote data-testid={`${testId}-empty`}>{t('item_editor.tags.empty')}</S.SectionNote>
+        <p className={styles.sectionNote} data-testid={`${testId}-empty`}>
+          {t('item_editor.tags.empty')}
+        </p>
       )}
       {!disabled && (
-        <S.TextInput
+        <input
+          className={styles.textInput}
           ref={inputRef}
           value={value}
           placeholder={t('item_editor.tags.placeholder')}
@@ -70,6 +78,6 @@ export function TagsInput({ tags, disabled = false, onChange, inputRef, testId =
           onBlur={commit}
         />
       )}
-    </S.Field>
+    </div>
   )
 }
