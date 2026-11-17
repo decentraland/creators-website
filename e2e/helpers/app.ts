@@ -41,6 +41,8 @@ export type App = {
   previewAnswers: Array<{ method: string; result: string }>
   /** Messages of the browser dialogs (confirm, beforeunload) the page raised; each one is accepted. */
   dialogs: string[]
+  /** The page's console errors and uncaught exceptions, across reloads, for failure reports. */
+  consoleErrors: string[]
   /** The Segment `track` calls made so far, across reloads. */
   events: () => Promise<TrackedEvent[]>
   /** The Segment page view names, across reloads. */
@@ -179,6 +181,11 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     storage,
     data: { ...DEFAULT_EXTERNAL_DATA, ...opts.data }
   }
+  const consoleErrors: string[] = []
+  page.on('console', message => {
+    if (message.type() === 'error') consoleErrors.push(message.text().slice(0, 300))
+  })
+  page.on('pageerror', error => consoleErrors.push(`uncaught: ${String(error).slice(0, 300)}`))
   await page.setRequestInterception(true)
   page.on('request', req => {
     const url = new URL(req.url())
@@ -240,6 +247,7 @@ async function openPage(browser: Browser, opts: LaunchOptions): Promise<App> {
     openedUrls,
     previewAnswers: ctx.previewAnswers,
     dialogs,
+    consoleErrors,
     events,
     pageViews: () => [...pages],
     waitForEvent,
