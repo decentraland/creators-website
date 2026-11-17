@@ -83,11 +83,11 @@ const DYNAMIC_ALL_ALLOWED = [WEARABLE_PREVIEW]
 
 const SEAM_5 = 'See CONVENTIONS.md seam 5.'
 const BUILDER_TRANSPORT = {
-  group: ['~/lib/builder/transport'],
+  group: ['~/lib/builder/transport', '**/builder/transport'],
   message: `Only src/lib/builder imports its transport; call the endpoint functions from ~/lib/builder. ${SEAM_5}`
 }
 const BUILDER_WIRE = {
-  group: ['~/lib/builder/wire', '~/lib/builder/mappers'],
+  group: ['~/lib/builder/wire', '~/lib/builder/mappers', '**/builder/wire', '**/builder/mappers'],
   message: `builder-server's wire types and mappers stay inside src/lib/builder; its endpoint functions take and return domain types. ${SEAM_5}`
 }
 const BUILDER_IN_COMPONENTS_MESSAGE = `Components get builder-server data through hooks and import only URL helpers, error classification and types from ~/lib/builder. ${SEAM_5}`

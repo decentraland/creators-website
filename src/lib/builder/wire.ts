@@ -1,11 +1,10 @@
 // builder-server's wire contract: the request and response shapes as the legacy server sends and takes them.
 // Only this folder sees them; the rest of the app works with the domain types the mappers produce.
-import type { Mappings } from '@dcl/schemas'
+import type { ContractNetwork, Mappings } from '@dcl/schemas'
 import type { CollectionStatusCounts, CurationStatus, PaginatedResource } from '~/lib/collections'
 import type { CurationRequestStatus } from '~/lib/curation'
 import type { CollectionEventActor, CollectionEventPayload } from '~/lib/events'
 import type { ItemData, ItemMetrics, ItemType } from '~/lib/items'
-import type { ThirdParty } from '~/lib/thirdParty'
 import type { SlotsCheque } from './linked'
 
 export type RemoteCollection = {
@@ -111,7 +110,18 @@ export type RemoteItemCuration = {
 }
 
 /** Already camelCase on the wire; a virtual third party may leave any field but its id out. */
-export type RemoteThirdParty = Partial<Omit<ThirdParty, 'id'>> & { id: string }
+export type RemoteThirdParty = {
+  id: string
+  root?: string
+  managers?: string[]
+  name?: string
+  description?: string
+  isApproved?: boolean
+  isProgrammatic?: boolean
+  maxItems?: string
+  contracts?: { network: ContractNetwork; address: string }[]
+  published?: boolean
+}
 
 export type RemotePublishCollectionResult = { collection: RemoteCollection; items: RemoteItem[] }
 
