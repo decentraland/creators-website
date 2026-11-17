@@ -247,14 +247,6 @@
   }
 }
 
-.itemCount {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.4;
-  color: var(--color-soft-white);
-}
-
 .statusRetry {
   min-height: 44px;
   padding: 0 8px;
