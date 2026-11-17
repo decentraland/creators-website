@@ -1,6 +1,13 @@
 // Curation domain: the committee's review requests on standard collections, ported from the legacy
 // builder (modules/curations, modules/committee, CurationPage) against the same builder-server API.
 import { CollectionSort, CollectionType, hasBeenApproved, type Collection } from '~/lib/collections'
+import {
+  isFinalValidationError,
+  isRejectReasonCode,
+  latestStageEvent,
+  type CollectionEvent,
+  type RejectReasonCode
+} from '~/lib/events'
 
 export type CurationRequestStatus = 'pending' | 'approved' | 'rejected'
 
@@ -9,17 +16,32 @@ export type RemoteCollectionCuration = {
   collection_id: string
   status: CurationRequestStatus
   assignee?: string | null
+  reviewed_by?: string | null
+  rejection_reasons?: string[] | null
+  rejection_message?: string | null
   created_at: string
   updated_at: string
 }
+
+/** `reviewed_by` value when the automated review, not a committee member, decided. */
+export const VALIDATOR_REVIEWER = 'validator'
 
 export type CollectionCuration = {
   id: string
   collectionId: string
   status: CurationRequestStatus
   assignee: string | null
+  /** `'validator'`, the deciding curator's lowercase address, or `null` while pending (and on legacy rows). */
+  reviewedBy: string | null
+  rejectionReasons: RejectReasonCode[] | null
+  rejectionMessage: string | null
   createdAt: number
   updatedAt: number
+}
+
+function toRejectReasons(codes: string[] | null | undefined): RejectReasonCode[] | null {
+  if (!codes) return null
+  return codes.filter(isRejectReasonCode)
 }
 
 export function fromRemoteCuration(remote: RemoteCollectionCuration): CollectionCuration {
@@ -28,9 +50,67 @@ export function fromRemoteCuration(remote: RemoteCollectionCuration): Collection
     collectionId: remote.collection_id,
     status: remote.status,
     assignee: remote.assignee ? remote.assignee.toLowerCase() : null,
+    reviewedBy: remote.reviewed_by ? remote.reviewed_by.toLowerCase() : null,
+    rejectionReasons: toRejectReasons(remote.rejection_reasons),
+    rejectionMessage: remote.rejection_message ?? null,
     createdAt: +new Date(remote.created_at),
     updatedAt: +new Date(remote.updated_at)
   }
+}
+
+export enum ReviewStage {
+  AUTOMATED_REVIEWING = 'automated_reviewing',
+  AWAITING_CURATOR = 'awaiting_curator',
+  /** The validator did not pass it (skipped, could not check, or gave up): a curator decides. */
+  NEEDS_CURATOR = 'needs_curator',
+  REJECTED_BY_VALIDATOR = 'rejected_by_validator',
+  APPEALED = 'appealed',
+  REJECTED_BY_CURATOR = 'rejected_by_curator',
+  APPROVED = 'approved'
+}
+
+/**
+ * Where the review stands, from the latest request and the newest stage-defining timeline event (the frozen
+ * curation contract's table). `events` newest first; `null` while the timeline is unavailable (feature off,
+ * not loaded, or a server without it), which keeps every surface on the legacy curation state. Never claims
+ * more than the chain does: an approved request on a collection that is not approved on chain is disabled.
+ */
+export function getReviewStage(
+  collection: Collection,
+  curation: CollectionCuration | null,
+  events: CollectionEvent[] | null
+): ReviewStage | null {
+  if (!curation || !events) return null
+  if (curation.status === 'approved') return collection.isApproved ? ReviewStage.APPROVED : null
+  if (curation.status === 'rejected') {
+    if (curation.reviewedBy === VALIDATOR_REVIEWER) return ReviewStage.REJECTED_BY_VALIDATOR
+    return curation.reviewedBy ? ReviewStage.REJECTED_BY_CURATOR : null
+  }
+  const latest = latestStageEvent(events)
+  switch (latest?.type) {
+    case 'review.automated_started':
+      return ReviewStage.AUTOMATED_REVIEWING
+    case 'review.automated_error':
+      return isFinalValidationError(latest) ? ReviewStage.NEEDS_CURATOR : ReviewStage.AUTOMATED_REVIEWING
+    case 'review.automated_passed':
+      return ReviewStage.AWAITING_CURATOR
+    case 'review.human_required':
+      return ReviewStage.NEEDS_CURATOR
+    case 'review.appeal_requested':
+      return ReviewStage.APPEALED
+    default:
+      return null
+  }
+}
+
+/** A review is open or was sent back, so the creator has a curator to write to; an approved one is closed. */
+export function hasReviewConversation(curation: CollectionCuration | null): boolean {
+  return curation?.status === 'pending' || curation?.status === 'rejected'
+}
+
+/** Stages in which the creator may ask for another automated review or a human one. */
+export function isRejectedStage(stage: ReviewStage | null): boolean {
+  return stage === ReviewStage.REJECTED_BY_VALIDATOR || stage === ReviewStage.REJECTED_BY_CURATOR
 }
 
 export function isCommitteeMember(members: string[] | undefined, address: string | undefined): boolean {
@@ -42,6 +122,8 @@ export function isCommitteeMember(members: string[] | undefined, address: string
 /** A pending request is "to review" whether or not a curator has it: the assignee says who, the state doesn't. */
 export enum CurationState {
   TO_REVIEW = 'to_review',
+  /** Pending, but the automated review is still running: not a curator's turn yet. */
+  AUTO_REVIEWING = 'auto_reviewing',
   APPROVED = 'approved',
   REJECTED = 'rejected',
   DISABLED = 'disabled'
@@ -67,6 +149,17 @@ export function getCurationState(collection: Collection, curation: CollectionCur
     if (curation?.status === 'rejected') return CurationState.REJECTED
   }
   return CurationState.TO_REVIEW
+}
+
+/** The curator-facing state: the curation state, except a pending request still in its automated review. */
+export function getCuratorState(
+  collection: Collection,
+  curation: CollectionCuration | null,
+  stage: ReviewStage | null
+): CurationState {
+  return stage === ReviewStage.AUTOMATED_REVIEWING
+    ? CurationState.AUTO_REVIEWING
+    : getCurationState(collection, curation)
 }
 
 export enum ReviewAction {
@@ -105,6 +198,7 @@ export function canEditAssignee(collection: Collection, curation: CollectionCura
 /** The status picker's options: one "to review" covers a pending request whether or not a curator has it. */
 export enum CurationStatusFilter {
   TO_REVIEW = 'to_review',
+  AUTO_REVIEWING = 'auto_reviewing',
   APPROVED = 'approved',
   REJECTED = 'rejected',
   DISABLED = 'disabled'
@@ -117,6 +211,7 @@ export const DEFAULT_STATUS_FILTERS = [CurationStatusFilter.TO_REVIEW]
 // builder-server splits a pending request by assignee; the picker doesn't, since the assignee filter already does.
 const SERVER_STATUSES: Record<CurationStatusFilter, string[]> = {
   [CurationStatusFilter.TO_REVIEW]: ['to_review', 'under_review'],
+  [CurationStatusFilter.AUTO_REVIEWING]: ['auto_reviewing'],
   [CurationStatusFilter.APPROVED]: ['approved'],
   [CurationStatusFilter.REJECTED]: ['rejected'],
   [CurationStatusFilter.DISABLED]: ['disabled']

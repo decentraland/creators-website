@@ -31,6 +31,18 @@ export type BuilderSeed = {
   approvalData?: Record<string, LinkedApprovalDataRow>
   /** Addresses seated on the curation committee. */
   committee?: string[]
+  /** The review timeline (builder-server #813), in any order: the server lists it newest first. */
+  events?: RemoteCollectionEventRow[]
+}
+
+export type RemoteCollectionEventRow = {
+  id: string
+  collection_id: string
+  type: string
+  actor: 'creator' | 'curator' | 'validator' | 'system'
+  actor_address: string | null
+  payload: Record<string, unknown>
+  created_at: string
 }
 
 export type LinkedApprovalDataRow = {
@@ -107,6 +119,10 @@ export type RemoteCurationRow = {
   collection_id: string
   status: 'pending' | 'approved' | 'rejected'
   assignee: string | null
+  /** `'validator'` or the deciding curator; null while undecided. */
+  reviewed_by?: string | null
+  rejection_reasons?: string[] | null
+  rejection_message?: string | null
   created_at: string
   updated_at: string
 }
@@ -133,6 +149,30 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
   const slots = { ...seed.slots }
   const itemCurations = new Map((seed.itemCurations ?? []).map(row => [row.item_id, structuredClone(row)]))
   const approvalData = new Map(Object.entries(structuredClone(seed.approvalData ?? {})))
+  const events = structuredClone(seed.events ?? [])
+
+  const eventsOf = (collectionId: string) =>
+    events
+      .filter(event => event.collection_id === collectionId)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+  function recordEvent(
+    collectionId: string,
+    type: string,
+    actor: RemoteCollectionEventRow['actor'],
+    payload: Record<string, unknown> = {}
+  ) {
+    const event: RemoteCollectionEventRow = {
+      id: `event-${events.length + 1}`,
+      collection_id: collectionId,
+      type,
+      actor,
+      actor_address: null,
+      payload,
+      created_at: now()
+    }
+    events.push(event)
+    return event
+  }
 
   const itemsOf = (collectionId: string) => [...items.values()].filter(item => item.collection_id === collectionId)
   const withCount = (row: RemoteCollectionRow): RemoteCollectionRow => ({
@@ -354,6 +394,17 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       row.forum_link = `https://forum.decentraland.org/t/e2e-${id}`
       return ok(row.forum_link)
     }
+    if (method === 'GET' && sub === 'events') return ok(paginate(eventsOf(id), query))
+    if (method === 'POST' && sub === 'comments') {
+      const { message, itemId } = body as { message: string; itemId?: string }
+      const actor = (seed.committee ?? []).length > 0 ? 'curator' : 'creator'
+      return ok(recordEvent(id, 'review.comment', actor, { message: message.trim(), ...(itemId ? { itemId } : {}) }))
+    }
+    if (method === 'POST' && sub === 'validations') {
+      return ok(
+        recordEvent(id, 'review.automated_started', 'validator', { validationId: `validation-${events.length + 1}` })
+      )
+    }
     if (method === 'GET' && sub === 'curation') return ok(curations.get(id) ?? null)
     if (method === 'POST' && sub === 'curation') {
       if (curations.get(id)?.status === 'pending')
@@ -373,8 +424,15 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     if (method === 'PATCH' && sub === 'curation') {
       const current = curations.get(id)
       if (!current) return notFound('curation')
-      const changes = (body as { curation?: Partial<RemoteCurationRow> })?.curation ?? {}
-      const curation = { ...current, ...changes, updated_at: now() }
+      const { rejectionReasons, rejectionMessage, ...changes } =
+        (body as { curation?: Partial<RemoteCurationRow> & { rejectionReasons?: string[]; rejectionMessage?: string } })
+          ?.curation ?? {}
+      // builder-server stores the rejection feedback snake-cased, and only on a rejection.
+      const feedback =
+        changes.status === 'rejected'
+          ? { rejection_reasons: rejectionReasons ?? null, rejection_message: rejectionMessage ?? null }
+          : {}
+      const curation = { ...current, ...changes, ...feedback, updated_at: now() }
       setCuration(id, curation)
       return ok(curation)
     }
@@ -462,6 +520,28 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
       return row ? ok(withCount(row)) : notFound('collection')
     }
     if (method === 'GET' && parts.length === 1 && head === 'collections') return listCurationCollections(query)
+    // An appeal opens a new pending request over the rejection, as builder-server does.
+    if (head === 'collections' && id && sub === 'curation' && subPath === 'appeal' && method === 'POST') {
+      // The same answers as builder-server, which the client tells apart by message.
+      const latest = eventsOf(id)[0]
+      if (latest?.type === 'review.appeal_requested' && curations.get(id)?.status === 'pending') {
+        return conflict('There is already an open appeal for this collection')
+      }
+      if (curations.get(id)?.status !== 'rejected') return conflict('Only rejected collections can be appealed')
+      const note = (body as { note?: string } | undefined)?.note ?? ''
+      recordEvent(id, 'review.appeal_requested', 'creator', { note })
+      const curation: RemoteCurationRow = {
+        id: `curation-${id}-appeal`,
+        collection_id: id,
+        status: 'pending',
+        assignee: null,
+        reviewed_by: null,
+        created_at: now(),
+        updated_at: now()
+      }
+      setCuration(id, curation)
+      return ok(curation)
+    }
     if (head === 'collections' && id && sub === 'curation' && subPath === 'post' && method === 'POST') {
       return collections.has(id) ? { status: 200, body: { ok: true } } : notFound('collection')
     }
@@ -479,7 +559,8 @@ export function createBuilderServer(seed: BuilderSeed = {}) {
     thirdParties,
     slots,
     itemCurations,
-    approvalData
+    approvalData,
+    events
   }
 }
 

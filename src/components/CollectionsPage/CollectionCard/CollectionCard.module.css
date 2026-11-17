@@ -77,6 +77,14 @@
   bottom: 8px;
 }
 
+.replyBadge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  /* The mosaic behind is arbitrary art: the tint alone would not keep the label readable. */
+  background: var(--color-overlay);
+}
+
 .body {
   flex: none;
   display: flex;

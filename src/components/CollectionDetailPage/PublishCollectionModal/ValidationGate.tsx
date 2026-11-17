@@ -6,7 +6,8 @@ import { track } from '~/lib/analytics'
 import { formatItemSize, isOverSizeLimit } from '~/lib/itemSize'
 import { ValidationSeverity, countIssues, getValidationStatus, hasErrors, type ValidationIssue } from '~/lib/validation'
 import { PendingModal } from '~/components/PendingModal'
-import { ValidationIssuesView, type ItemCheck } from './ValidationIssuesView'
+import { type ItemCheck } from '~/lib/validation'
+import { ValidationIssuesView } from './ValidationIssuesView'
 
 export type ValidationFlow = 'publish' | 'push_changes'
 

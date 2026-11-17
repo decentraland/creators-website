@@ -8,7 +8,9 @@ import {
 } from '~/lib/curation'
 import { fromRemoteCollection, type Collection, type PaginatedResource, type RemoteCollection } from '~/lib/collections'
 import { fromRemoteItemCuration, type ItemCuration, type RemoteItemCuration } from '~/lib/linkedItemStatus'
+import { type RejectReasonCode } from '~/lib/events'
 import { BuilderServerError, UNPUBLISHED_COLLECTION_STATUS, request } from './transport'
+import { toValidationLimitError } from './review'
 
 /** The collection's latest curation request: GET /collections/{id}/curation. Empty data when it was never reviewed. */
 export async function fetchCollectionCuration(
@@ -54,29 +56,46 @@ export async function fetchCurations(address: string): Promise<CollectionCuratio
 
 /**
  * Opens a new review request: POST /collections/{id}/curation. Creators use it to push changes of an
- * approved collection; the committee to assign a collection that was never requested. 400 while one is pending.
+ * approved collection, optionally with a note saying what changed; the committee to assign a collection that
+ * was never requested. 400 while one is pending.
  */
 export async function pushCollectionCuration(
   address: string,
   collectionId: string,
-  assignee?: string | null
+  assignee?: string | null,
+  note?: string
 ): Promise<CollectionCuration> {
-  const body = assignee === undefined ? undefined : { curation: { assignee } }
-  const remote = await request<RemoteCollectionCuration>(
-    address,
-    'POST',
-    `/collections/${collectionId}/curation`,
-    '',
-    body
-  )
-  return fromRemoteCuration(remote)
+  const curation = { ...(assignee === undefined ? {} : { assignee }), ...(note ? { note } : {}) }
+  const body = Object.keys(curation).length > 0 ? { curation } : undefined
+  try {
+    const remote = await request<RemoteCollectionCuration>(
+      address,
+      'POST',
+      `/collections/${collectionId}/curation`,
+      '',
+      body
+    )
+    return fromRemoteCuration(remote)
+  } catch (error) {
+    // A creator's changes wait for the day's automated reviews like a retry does.
+    throw toValidationLimitError(error)
+  }
+}
+
+export type CurationUpdate = {
+  status?: CurationRequestStatus
+  assignee?: string | null
+  rejectionReasons?: RejectReasonCode[]
+  rejectionMessage?: string
+  /** Kept with an approval only: what the curator wants the creator to know. */
+  note?: string
 }
 
 /** Updates the latest request: PATCH /collections/{id}/curation. Status changes and assignees are committee-only. */
 export async function updateCollectionCuration(
   address: string,
   collectionId: string,
-  curation: { status?: CurationRequestStatus; assignee?: string | null }
+  curation: CurationUpdate
 ): Promise<CollectionCuration> {
   const remote = await request<RemoteCollectionCuration>(
     address,

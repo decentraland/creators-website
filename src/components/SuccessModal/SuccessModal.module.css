@@ -22,8 +22,16 @@
   color: var(--color-white);
 }
 
+.body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
 .text {
-  margin: 0 0 32px;
+  margin: 0;
   max-width: 615px;
   font-size: 18px;
   line-height: 1.5;

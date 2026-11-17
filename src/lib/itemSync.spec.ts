@@ -7,6 +7,7 @@ import {
   ItemSyncStatus,
   buildResetItem,
   getItemRowStatus,
+  hasUpdatesSinceRejection,
   showsItemStatusColumn,
   getItemSyncStatus,
   isItemSynced,
@@ -364,5 +365,19 @@ describe('buildResetItem', () => {
   it('takes the ADR-74 data for an emote', () => {
     const reset = buildResetItem({ ...emote, data: { ...emote.data, loop: false } }, entityFor(emote))
     expect(reset.data.loop).toBe(true)
+  })
+})
+
+describe('hasUpdatesSinceRejection', () => {
+  const rejected = { status: 'rejected' as const, updatedAt: 100 }
+
+  it('finds an update once an item was saved or added after the request was sent back', () => {
+    expect(hasUpdatesSinceRejection(rejected, [{ updatedAt: 50 }, { updatedAt: 150 }])).toBe(true)
+    expect(hasUpdatesSinceRejection(rejected, [{ updatedAt: 50 }, { updatedAt: 100 }])).toBe(false)
+  })
+
+  it('finds none on a request that was not sent back', () => {
+    expect(hasUpdatesSinceRejection({ status: 'pending', updatedAt: 100 }, [{ updatedAt: 150 }])).toBe(false)
+    expect(hasUpdatesSinceRejection(null, [{ updatedAt: 150 }])).toBe(false)
   })
 })

@@ -71,8 +71,17 @@
   &:focus-visible {
     background: var(--editor-surface-hover);
   }
-  &:disabled {
+  &:disabled,
+  &[aria-disabled] {
     cursor: default;
+  }
+  &[data-awaited] {
+    border-color: var(--color-warning-text);
+    color: var(--color-warning-text);
+  }
+
+  @media (max-width: 768px) {
+    min-height: 44px;
   }
 }
 

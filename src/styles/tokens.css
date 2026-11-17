@@ -41,6 +41,9 @@
   --color-warning-text: #ffe1b7;
   /* Inline validation errors on dark surfaces (Figma System/Error). */
   --color-error-overlay: rgba(233, 113, 119, 0.2);
+  --color-error-accent: #ec303a;
+  --color-error-surface: rgba(24, 0, 0, 0.4);
+  --color-success-overlay: rgba(48, 205, 0, 0.12);
   --color-error-text: #ffcdd4;
   --color-white: #ffffff;
   /* Hairline on a translucent field over the purple (search box border). */

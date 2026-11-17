@@ -244,3 +244,19 @@
     padding: 12px 0;
   }
 }
+
+.stateWithReview {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.replied {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-warning-overlay);
+  color: var(--color-warning-text);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}

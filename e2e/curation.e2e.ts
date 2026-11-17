@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { collection, publishedItem } from './fixtures'
 import { launchApp, type App } from './helpers/app'
-import { clickTestId, isShown, waitForTestId } from './helpers/dom'
+import { clickTestId, isShown, testIdsStartingWith, waitForTestId } from './helpers/dom'
 import { decodeTransaction } from './helpers/rpc'
 import { TEST_ADDRESS } from './helpers/session'
 
@@ -39,6 +39,17 @@ const curationState = (a: App) =>
   a.page.$eval('[data-testid="review-bar"] [data-testid="curation-state"]', el => el.getAttribute('data-state'))
 
 describe('curation', () => {
+  it('offers no auto-reviewing filter while the automated review is off', async () => {
+    app = await launchApp({ path: '/curation?status=auto_reviewing', builder })
+    const { page } = app
+    await waitForTestId(page, 'curation-row')
+    await clickTestId(page, 'curation-status-filter')
+    await waitForTestId(page, 'curation-status-filter-listbox')
+    const options = await testIdsStartingWith(page, 'curation-status-filter-option-')
+    expect(options).toContain('curation-status-filter-option-to_review')
+    expect(options).not.toContain('curation-status-filter-option-auto_reviewing')
+  })
+
   it('lists a submission, assigns it and approves it from the editor', async () => {
     app = await launchApp({ path: '/curation', builder })
     const { page } = app

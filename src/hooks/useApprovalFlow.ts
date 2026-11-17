@@ -124,9 +124,13 @@ export function useApprovalFlow(
   collection: Collection,
   curation: CollectionCuration | null,
   mode: ApprovalMode,
-  reviewed: Item[]
+  reviewed: Item[],
+  /** What the curator tells the creator along with the approval; read when the request is approved. */
+  note = ''
 ) {
   const queryClient = useQueryClient()
+  const approvalNote = useRef(note)
+  approvalNote.current = note
   const address = session.address
   const chainId = getMaticChainId()
   const [view, setView] = useState<ApprovalView>({ kind: 'loading' })
@@ -236,12 +240,19 @@ export function useApprovalFlow(
             // A failed approval below must find this one on retry, not open another (builder-server answers 400).
             queryClient.setQueryData(key, opened)
           }
-          queryClient.setQueryData(key, await updateCollectionCuration(address, collection.id, { status: 'approved' }))
+          const text = approvalNote.current.trim()
+          queryClient.setQueryData(
+            key,
+            await updateCollectionCuration(address, collection.id, {
+              status: 'approved',
+              ...(text ? { note: text } : {})
+            })
+          )
         } catch (error) {
           void queryClient.invalidateQueries({ queryKey: key })
           throw error
         }
-        track('Approve curation', { collectionId: collection.id })
+        track('Approve curation', { collectionId: collection.id, has_note: !!approvalNote.current.trim() })
       }
       refresh()
       track('Approval flow completed', { collectionId: collection.id, mode })
