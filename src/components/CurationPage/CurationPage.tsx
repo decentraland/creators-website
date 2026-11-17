@@ -12,9 +12,11 @@ import { Switch } from '~/components/Switch'
 import { useCampaign } from '~/hooks/useCampaign'
 import { useCommittee } from '~/hooks/useCommittee'
 import { useCurationCollections, useCurationsByCollection, useCuratorOptions } from '~/hooks/useCuration'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { shortenAddress } from '~/lib/address'
 import { track } from '~/lib/analytics'
 import { type Collection } from '~/lib/collections'
+import { FeatureFlag } from '~/lib/featureFlags'
 import {
   CURATION_PAGE_SIZE,
   CURATION_SORTS,
@@ -28,7 +30,7 @@ import {
   rememberCurationSearch,
   toMultiParam,
   type CollectionCuration,
-  type CurationStatusFilter
+  CurationStatusFilter
 } from '~/lib/curation'
 import { pageRangeLabel } from '~/lib/pagination'
 import { useWallet } from '~/store/wallet'
@@ -52,7 +54,14 @@ const CurationPage = () => {
   const campaign = useCampaign()
 
   const [searchParams, setSearchParams] = useSearchParams()
-  const filters = useMemo(() => parseCurationFilters(searchParams, address), [searchParams, address])
+  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION_REVIEW_FLOW).enabled
+  // Only a server with the automated review knows the auto-reviewing status; a shared link may still carry it.
+  const filters = useMemo(() => {
+    const parsed = parseCurationFilters(searchParams, address)
+    return autoCuration
+      ? parsed
+      : { ...parsed, statuses: parsed.statuses.filter(status => status !== CurationStatusFilter.AUTO_REVIEWING) }
+  }, [searchParams, address, autoCuration])
   const assigneeDefaults = useMemo(() => defaultAssignees(address), [address])
   const collections = useCurationCollections(address, filters, committee.isCurator)
   const curations = useCurationsByCollection(address, committee.isCurator)
@@ -80,8 +89,12 @@ const CurationPage = () => {
       : curatorOptions
   }, [curatorOptions, filters.assignees])
   const statusOptions = useMemo(
-    () => STATUS_FILTERS.map(status => ({ value: status, label: t(`curation_page.filter.${status}`) })),
-    [t]
+    () =>
+      STATUS_FILTERS.filter(status => autoCuration || status !== CurationStatusFilter.AUTO_REVIEWING).map(status => ({
+        value: status,
+        label: t(`curation_page.filter.${status}`)
+      })),
+    [t, autoCuration]
   )
   const sortOptions = useMemo<SelectOption<string>[]>(
     () => CURATION_SORTS.map(sort => ({ value: sort, label: t(`curation_page.sort.${sort}`) })),
