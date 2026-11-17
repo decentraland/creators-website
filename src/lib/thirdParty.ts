@@ -31,23 +31,6 @@ export type ThirdParty = {
   published: boolean
 }
 
-export type RemoteThirdParty = Partial<Omit<ThirdParty, 'id'>> & { id: string }
-
-export function fromRemoteThirdParty(remote: RemoteThirdParty): ThirdParty {
-  return {
-    id: remote.id,
-    root: remote.root ?? '',
-    managers: remote.managers ?? [],
-    name: remote.name ?? '',
-    description: remote.description ?? '',
-    isApproved: !!remote.isApproved,
-    isProgrammatic: !!remote.isProgrammatic,
-    maxItems: remote.maxItems ?? '0',
-    contracts: remote.contracts ?? [],
-    published: !!remote.published
-  }
-}
-
 /** URL-safe, lowercase slug (legacy used the `slug` package; same output for ASCII names). */
 export function slugify(text: string): string {
   return text

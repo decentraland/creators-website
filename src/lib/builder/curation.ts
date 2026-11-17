@@ -1,14 +1,15 @@
-import {
-  fromRemoteCuration,
-  toCurationQueryString,
-  type CollectionCuration,
-  type CurationFilters,
-  type CurationRequestStatus,
-  type RemoteCollectionCuration
-} from '~/lib/curation'
-import { fromRemoteCollection, type Collection, type PaginatedResource, type RemoteCollection } from '~/lib/collections'
-import { fromRemoteItemCuration, type ItemCuration, type RemoteItemCuration } from '~/lib/linkedItemStatus'
+import { type CollectionCuration, type CurationFilters, type CurationRequestStatus } from '~/lib/curation'
+import { type Collection, type PaginatedResource } from '~/lib/collections'
+import { type ItemCuration } from '~/lib/linkedItemStatus'
+import { fromRemoteCollection, fromRemoteCuration, fromRemoteItemCuration, toCurationQueryString } from './mappers'
 import { BuilderServerError, UNPUBLISHED_COLLECTION_STATUS, request } from './transport'
+import type {
+  RemoteCollection,
+  RemoteCollectionCuration,
+  RemoteCollectionCurationBody,
+  RemoteItemCuration,
+  RemoteItemCurationBody
+} from './wire'
 
 /** The collection's latest curation request: GET /collections/{id}/curation. Empty data when it was never reviewed. */
 export async function fetchCollectionCuration(
@@ -61,7 +62,7 @@ export async function pushCollectionCuration(
   collectionId: string,
   assignee?: string | null
 ): Promise<CollectionCuration> {
-  const body = assignee === undefined ? undefined : { curation: { assignee } }
+  const body = assignee === undefined ? undefined : ({ curation: { assignee } } satisfies RemoteCollectionCurationBody)
   const remote = await request<RemoteCollectionCuration>(
     address,
     'POST',
@@ -85,7 +86,7 @@ export async function updateCollectionCuration(
     '',
     {
       curation
-    }
+    } satisfies RemoteCollectionCurationBody
   )
   return fromRemoteCuration(remote)
 }
@@ -175,6 +176,6 @@ export async function updateItemCuration(
 ): Promise<ItemCuration> {
   const remote = await request<RemoteItemCuration>(address, 'PATCH', `/items/${itemId}/curation`, '', {
     curation: { status }
-  })
+  } satisfies RemoteItemCurationBody)
   return fromRemoteItemCuration(remote)
 }

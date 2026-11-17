@@ -1,17 +1,8 @@
 // Curation domain: the committee's review requests on standard collections, ported from the legacy
 // builder (modules/curations, modules/committee, CurationPage) against the same builder-server API.
-import { CollectionSort, CollectionType, hasBeenApproved, type Collection } from '~/lib/collections'
+import { CollectionSort, hasBeenApproved, type Collection } from '~/lib/collections'
 
 export type CurationRequestStatus = 'pending' | 'approved' | 'rejected'
-
-export type RemoteCollectionCuration = {
-  id: string
-  collection_id: string
-  status: CurationRequestStatus
-  assignee?: string | null
-  created_at: string
-  updated_at: string
-}
 
 export type CollectionCuration = {
   id: string
@@ -20,17 +11,6 @@ export type CollectionCuration = {
   assignee: string | null
   createdAt: number
   updatedAt: number
-}
-
-export function fromRemoteCuration(remote: RemoteCollectionCuration): CollectionCuration {
-  return {
-    id: remote.id,
-    collectionId: remote.collection_id,
-    status: remote.status,
-    assignee: remote.assignee ? remote.assignee.toLowerCase() : null,
-    createdAt: +new Date(remote.created_at),
-    updatedAt: +new Date(remote.updated_at)
-  }
 }
 
 export function isCommitteeMember(members: string[] | undefined, address: string | undefined): boolean {
@@ -113,14 +93,6 @@ export enum CurationStatusFilter {
 /** The status picker's options, in display order; nothing picked means every status. */
 export const STATUS_FILTERS = Object.values(CurationStatusFilter)
 export const DEFAULT_STATUS_FILTERS = [CurationStatusFilter.TO_REVIEW]
-
-// builder-server splits a pending request by assignee; the picker doesn't, since the assignee filter already does.
-const SERVER_STATUSES: Record<CurationStatusFilter, string[]> = {
-  [CurationStatusFilter.TO_REVIEW]: ['to_review', 'under_review'],
-  [CurationStatusFilter.APPROVED]: ['approved'],
-  [CurationStatusFilter.REJECTED]: ['rejected'],
-  [CurationStatusFilter.DISABLED]: ['disabled']
-}
 
 /** What a review is for: a collection never approved on chain, or changes to one that was (or is). */
 export enum ReviewType {
@@ -218,23 +190,6 @@ function parseMulti<T extends string>(
 export function toMultiParam(values: string[], defaults: string[]): string[] | null {
   if (values.length === defaults.length && values.every(value => defaults.includes(value))) return null
   return values.length ? values : [NONE]
-}
-
-/** GET /collections query string for the curation list: published collections, standard and linked. */
-export function toCurationQueryString(filters: CurationFilters, limit = CURATION_PAGE_SIZE): string {
-  const query = new URLSearchParams()
-  query.append('is_published', 'true')
-  for (const assignee of filters.assignees) query.append('assignee', assignee)
-  for (const status of filters.statuses.flatMap(status => SERVER_STATUSES[status])) query.append('status', status)
-  if (filters.reviewType) query.append('review_type', filters.reviewType)
-  if (filters.type === CurationTypeFilter.STANDARD) query.append('type', CollectionType.STANDARD)
-  if (filters.type === CurationTypeFilter.LINKED) query.append('type', CollectionType.THIRD_PARTY)
-  query.append('sort', filters.sort)
-  if (filters.search) query.append('q', filters.search)
-  if (filters.tag) query.append('tag', filters.tag.toLowerCase())
-  query.append('page', String(filters.page))
-  query.append('limit', String(limit))
-  return `?${query.toString()}`
 }
 
 /** Committee members for the assignee pickers: the signed-in curator first, the rest as the server lists them. */

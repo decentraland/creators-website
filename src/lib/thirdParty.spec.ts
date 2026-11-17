@@ -5,7 +5,6 @@ import {
   buildNewLinkedCollection,
   canViewLinkedCollection,
   decodeLinkedUrn,
-  fromRemoteThirdParty,
   getDefaultUrnSuffix,
   getLinkedContractNetworks,
   getThirdPartyId,
@@ -169,22 +168,5 @@ describe('getLinkedContractNetworks', () => {
   it('hides the testnets in production', () => {
     expect(getLinkedContractNetworks(false)).toEqual(['mainnet', 'matic', 'sepolia', 'amoy'])
     expect(getLinkedContractNetworks(true)).toEqual(['mainnet', 'matic'])
-  })
-})
-
-describe('fromRemoteThirdParty', () => {
-  it('fills what a virtual third party lacks', () => {
-    expect(fromRemoteThirdParty({ id: 'urn:tp', name: 'Brand', managers: ['0x1'] })).toEqual({
-      id: 'urn:tp',
-      root: '',
-      managers: ['0x1'],
-      name: 'Brand',
-      description: '',
-      isApproved: false,
-      isProgrammatic: false,
-      maxItems: '0',
-      contracts: [],
-      published: false
-    })
   })
 })
