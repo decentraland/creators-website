@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { Authenticator, type AuthIdentity, type AuthLink } from '@dcl/crypto'
 import { localStorageStoreIdentity, localStorageClearIdentity } from '@dcl/single-sign-on-client'
 import { ProviderType } from '@dcl/schemas'
 import { TEST_PRIVATE_KEY, TEST_SIGNER } from '~/test/chain'
 import { createAuthHeaders, getIdentity, isSocialLogin, logout, signedFetch } from './auth'
+import { resetServerClock } from './serverClock'
 import { createEphemeralIdentity } from './signer'
 
 vi.mock('decentraland-connect', () => ({
@@ -122,6 +123,137 @@ describe('auth', () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(Object.keys(init.headers as Record<string, string>)).toHaveLength(0)
+  })
+
+  describe('when a signed request is refused as unauthenticated', () => {
+    const STATUS_URL = /\/status$/
+    const behindMs = 2 * 60 * 60 * 1000
+
+    let fetchMock: ReturnType<typeof vi.fn<(url: string, init?: RequestInit) => Promise<unknown>>>
+    let refusedCancel: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      refusedCancel = vi.fn().mockResolvedValue(undefined)
+      fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<unknown>>()
+      vi.stubGlobal('fetch', fetchMock)
+    })
+
+    afterEach(() => {
+      resetServerClock()
+      vi.unstubAllGlobals()
+    })
+
+    describe('and the device clock is hours behind the server', () => {
+      let response: Response
+
+      beforeEach(async () => {
+        fetchMock.mockImplementation((url: string) => {
+          if (STATUS_URL.test(url)) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ currentTime: Date.now() + behindMs }) })
+          }
+          const isRetry = fetchMock.mock.calls.filter(([u]) => !STATUS_URL.test(u)).length > 1
+          return Promise.resolve(
+            isRetry ? { ok: true, status: 200 } : { ok: false, status: 401, body: { cancel: refusedCancel } }
+          )
+        })
+        response = await signedFetch(address, 'https://builder-api.example/v1', `/${address}/collections`)
+      })
+
+      it('should sign the request again with the server time and return the retried response', () => {
+        const signedCalls = fetchMock.mock.calls.filter(([u]) => !STATUS_URL.test(u))
+        expect(signedCalls).toHaveLength(2)
+        const first = Number((signedCalls[0][1]?.headers as Record<string, string>)['x-identity-timestamp'])
+        const retried = Number((signedCalls[1][1]?.headers as Record<string, string>)['x-identity-timestamp'])
+        expect(retried - first).toBeGreaterThan(behindMs - 60_000)
+        expect(response.status).toBe(200)
+      })
+
+      it('should release the refused response body', () => {
+        expect(refusedCancel).toHaveBeenCalled()
+      })
+    })
+
+    describe('and it is a write with a body', () => {
+      const body = JSON.stringify({ name: 'My collection' })
+      const signal = new AbortController().signal
+
+      beforeEach(async () => {
+        fetchMock.mockImplementation((url: string) => {
+          if (STATUS_URL.test(url)) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ currentTime: Date.now() + behindMs }) })
+          }
+          const isRetry = fetchMock.mock.calls.filter(([u]) => !STATUS_URL.test(u)).length > 1
+          return Promise.resolve(isRetry ? { ok: true, status: 200 } : { ok: false, status: 401 })
+        })
+        await signedFetch(address, 'https://builder-api.example/v1', '/collections', { method: 'PUT', body, signal })
+      })
+
+      it('should send the same body and signal again', () => {
+        const retried = fetchMock.mock.calls.filter(([u]) => !STATUS_URL.test(u))[1][1]
+        expect(retried).toEqual(expect.objectContaining({ method: 'PUT', body, signal }))
+      })
+    })
+
+    describe('and it was signed before a concurrent refusal corrected the clock', () => {
+      let releaseSlowRequest: () => void
+      let slow: Promise<Response>
+      let signedRequests: number
+
+      beforeEach(async () => {
+        signedRequests = 0
+        fetchMock.mockImplementation((url: string) => {
+          if (STATUS_URL.test(url)) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ currentTime: Date.now() + behindMs }) })
+          }
+          signedRequests++
+          if (url.endsWith('/slow') && signedRequests <= 2) {
+            // The first request's refusal arrives only after the other request already corrected the clock.
+            return new Promise(resolve => {
+              releaseSlowRequest = () => resolve({ ok: false, status: 401 })
+            })
+          }
+          return Promise.resolve(signedRequests <= 2 ? { ok: false, status: 401 } : { ok: true, status: 200 })
+        })
+        slow = signedFetch(address, 'https://builder-api.example/v1', '/slow')
+        await signedFetch(address, 'https://builder-api.example/v1', '/fast')
+        releaseSlowRequest()
+      })
+
+      it('should still sign the late-refused request again with the corrected time', async () => {
+        await expect(slow).resolves.toEqual(expect.objectContaining({ status: 200 }))
+      })
+    })
+
+    describe('and the device clock is in sync with the server', () => {
+      let response: Response
+
+      beforeEach(async () => {
+        fetchMock.mockImplementation((url: string) =>
+          Promise.resolve(
+            STATUS_URL.test(url)
+              ? { ok: true, json: () => Promise.resolve({ currentTime: Date.now() }) }
+              : { ok: false, status: 401 }
+          )
+        )
+        response = await signedFetch(address, 'https://builder-api.example/v1', `/${address}/collections`)
+      })
+
+      it('should return the refusal without retrying', () => {
+        expect(fetchMock.mock.calls.filter(([u]) => !STATUS_URL.test(u))).toHaveLength(1)
+        expect(response.status).toBe(401)
+      })
+    })
+
+    describe('and the request was not signed', () => {
+      beforeEach(async () => {
+        fetchMock.mockResolvedValue({ ok: false, status: 401 })
+        await signedFetch(undefined, 'https://builder-api.example/v1', '/collections')
+      })
+
+      it('should not measure the server clock', () => {
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+      })
+    })
   })
 
   // The auth chain stores these strings as they are: their format is what servers and other dapps parse.
