@@ -1,7 +1,7 @@
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
-import importX from 'eslint-plugin-import-x'
+import importX, { createNodeResolver } from 'eslint-plugin-import-x'
 import prettier from 'eslint-config-prettier'
 import globals from 'globals'
 
@@ -26,45 +26,94 @@ const UI2 = {
   paths: [{ name: 'decentraland-ui2', message: UI2_MESSAGE, allowTypeImports: true }],
   patterns: [{ group: ['decentraland-ui2/*'], message: UI2_MESSAGE, allowTypeImports: true }]
 }
-const UI2_ALLOWED = [
-  'src/components/AvatarPreview/AvatarPreview.tsx',
-  'src/components/ItemDraftModal/DraftProcessor.tsx',
-  'src/components/ThumbnailModal/ThumbnailModal.tsx',
-  'src/components/Tooltip/Tooltip.styles.ts'
-]
+const WEARABLE_PREVIEW = 'src/components/WearablePreview/WearablePreview.tsx'
+const UI2_ALLOWED = [WEARABLE_PREVIEW, 'src/components/Tooltip/Tooltip.styles.ts']
 const UI2_STYLING = {
   name: 'decentraland-ui2',
   importNames: ['styled', 'keyframes', 'GlobalStyles'],
   message:
-    'Styled defs live only in *.styles.ts, through @emotion/styled. See docs/DECISIONS.md (Pre-monorepo refactor).'
+    'Components are styled with CSS Modules; ui2 styling helpers stay out. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 
-const STYLES_FILES = ['src/**/*.styles.ts', 'src/styles/**/*.ts']
+// The two Emotion files left, styling decentraland-ui2's Tooltip and Navbar until the monorepo replaces both.
+const STYLES_FILES = ['src/components/Tooltip/Tooltip.styles.ts', 'src/components/TopNav/TopNav.styles.ts']
 const EMOTION_ALL = {
   regex: '^@emotion/',
-  message: 'Styling is migrating to CSS Modules; add no new Emotion. See docs/DECISIONS.md (Pre-monorepo refactor).'
+  message: 'Components are styled with CSS Modules; add no Emotion. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 const EMOTION_EXCEPT_STYLED = {
   regex: '^@emotion/(?!styled(/|$))',
-  message: 'Only @emotion/styled is allowed, and only in *.styles.ts. See docs/DECISIONS.md (Pre-monorepo refactor).'
+  message:
+    'Only @emotion/styled, and only in the Tooltip and TopNav styles. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 const MUI = {
-  regex: '^@mui/(?!icons-material(/|$))',
+  regex: '^@mui/',
   message:
-    'The monorepo has no MUI; only @mui/icons-material is allowed. See docs/DECISIONS.md (Pre-monorepo refactor).'
+    'The monorepo has no MUI; Material glyphs live in ~/components/Icons. See docs/DECISIONS.md (Pre-monorepo refactor).'
+}
+
+const ETHERS = {
+  regex: '^(ethers(/|$)|@ethersproject/)',
+  message: 'Chain code uses viem; ethers is only installed as a dependency of other packages.'
+}
+const DCL_TRANSACTIONS = {
+  regex: '^decentraland-transactions(/|$)',
+  message: 'Contract data lives in ~/lib/chain/contracts and meta-transactions in ~/lib/chain/metaTransaction.'
 }
 
 // no-restricted-imports does not see import(), so lazy-loaded usage needs its own rule.
 const DYNAMIC_EMOTION_MUI = {
-  selector: 'ImportExpression[source.value=/^(@emotion\\/|@mui\\/(?!icons-material(\\/|$)))/]',
+  selector: 'ImportExpression[source.value=/^(@emotion\\/|@mui\\/)/]',
   message: 'No new Emotion or MUI, lazy-loaded included. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 const DYNAMIC_UI2 = {
   selector: 'ImportExpression[source.value=/^decentraland-ui2(\\/|$)/]',
   message: UI2_MESSAGE
 }
+const DYNAMIC_ETHERS = {
+  selector: 'ImportExpression[source.value=/^(ethers(\\/|$)|@ethersproject\\/)/]',
+  message: ETHERS.message
+}
+const DYNAMIC_DCL_TRANSACTIONS = {
+  selector: 'ImportExpression[source.value=/^decentraland-transactions(\\/|$)/]',
+  message: DCL_TRANSACTIONS.message
+}
 const DYNAMIC_UI2_ALLOWED = ['src/components/TopNav/TopNav.tsx']
-const DYNAMIC_ALL_ALLOWED = ['src/components/PreviewControls/PreviewControls.tsx']
+const DYNAMIC_ALL_ALLOWED = [WEARABLE_PREVIEW]
+
+const SEAM_5 = 'See CONVENTIONS.md seam 5.'
+const BUILDER_TRANSPORT = {
+  group: ['~/lib/builder/transport', '**/builder/transport'],
+  message: `Only src/lib/builder imports its transport; call the endpoint functions from ~/lib/builder. ${SEAM_5}`
+}
+const BUILDER_WIRE = {
+  group: ['~/lib/builder/wire', '~/lib/builder/mappers', '**/builder/wire', '**/builder/mappers'],
+  message: `builder-server's wire types and mappers stay inside src/lib/builder; its endpoint functions take and return domain types. ${SEAM_5}`
+}
+const BUILDER_IN_COMPONENTS_MESSAGE = `Components get builder-server data through hooks and import only URL helpers, error classification and types from ~/lib/builder. ${SEAM_5}`
+const BUILDER_IN_COMPONENTS = {
+  paths: [
+    {
+      name: '~/lib/builder',
+      allowImportNames: [
+        'getContentsStorageUrl',
+        'isRefusedRequest',
+        'BuilderServerError',
+        'COLLECTION_LOCKED_STATUS',
+        'ValidationLimitError',
+        'isAppealAlreadyOpen',
+        'isCollectionBusy',
+        'isReviewConflict',
+        'isValidationRunning'
+      ],
+      allowTypeImports: true,
+      message: BUILDER_IN_COMPONENTS_MESSAGE
+    }
+  ],
+  patterns: [{ group: ['~/lib/builder/*'], message: BUILDER_IN_COMPONENTS_MESSAGE }]
+}
+const SPEC_FILES = ['**/*.spec.{ts,tsx}', '**/*.test.{ts,tsx}']
+const SRC_SPEC_FILES = SPEC_FILES.map(glob => `src/${glob}`)
 
 export default tseslint.config(
   { ignores: ['dist/**', 'coverage/**'] },
@@ -104,6 +153,23 @@ export default tseslint.config(
     }
   },
 
+  // The e2e harness (fake wallet key, fake back ends) is test-only: nothing under src may pull it into the bundle.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    // The rule only sees imports it can resolve, and the default resolver skips .ts files.
+    settings: { 'import-x/resolver-next': [createNodeResolver({ extensions: ['.ts', '.tsx', '.js'] })] },
+    rules: {
+      'import/no-restricted-paths': [
+        'error',
+        {
+          zones: [
+            { target: './src', from: './e2e', message: 'The e2e harness is test-only; never import it from src.' }
+          ]
+        }
+      ]
+    }
+  },
+
   // Auth is a sealed module (CONVENTIONS.md): only src/lib/auth may touch the wallet and identity
   // libraries. Types are fine anywhere; a provider or identity instance is not.
   // The pre-monorepo fence (docs/DECISIONS.md, "Pre-monorepo refactor") shares this rule: decentraland-ui2
@@ -133,31 +199,81 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-restricted-imports': ['error', UI2] }
   },
 
-  // Pre-monorepo fence (docs/DECISIONS.md, "Pre-monorepo refactor"): the monorepo has no Emotion or MUI,
-  // so no new usage; @emotion/styled stays in *.styles.ts and src/styles until the CSS Modules migration.
+  // Pre-monorepo fence (docs/DECISIONS.md, "Pre-monorepo refactor"): the monorepo has no Emotion or MUI, so no
+  // usage; @emotion/styled stays only in the Tooltip and TopNav styles, which wrap ui2 until the move.
+  // The same rule keeps the builder-server transport and wire contract inside src/lib/builder and components off
+  // its endpoints (CONVENTIONS.md seam 5); component specs import endpoints to mock them, so they stay out of that
+  // block, and specs build their fixtures from wire rows, so they may import the wire contract.
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: STYLES_FILES,
-    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI] }] }
+    ignores: [...STYLES_FILES, 'src/lib/builder/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [EMOTION_ALL, MUI, BUILDER_TRANSPORT, BUILDER_WIRE, ETHERS, DCL_TRANSACTIONS] }
+      ]
+    }
+  },
+  {
+    files: SRC_SPEC_FILES,
+    ignores: ['src/lib/builder/**'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI, BUILDER_TRANSPORT, ETHERS, DCL_TRANSACTIONS] }]
+    }
+  },
+  {
+    files: ['src/lib/builder/**/*.{ts,tsx}'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI, ETHERS, DCL_TRANSACTIONS] }] }
+  },
+  {
+    files: ['src/components/**/*.{ts,tsx}'],
+    ignores: [...STYLES_FILES, ...SPEC_FILES],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: BUILDER_IN_COMPONENTS.paths,
+          patterns: [EMOTION_ALL, MUI, ETHERS, DCL_TRANSACTIONS, ...BUILDER_IN_COMPONENTS.patterns]
+        }
+      ]
+    }
   },
   {
     files: STYLES_FILES,
-    rules: { 'no-restricted-imports': ['error', { patterns: [EMOTION_EXCEPT_STYLED, MUI] }] }
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [EMOTION_EXCEPT_STYLED, MUI, BUILDER_TRANSPORT, BUILDER_WIRE, ETHERS, DCL_TRANSACTIONS] }
+      ]
+    }
   },
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: [...DYNAMIC_UI2_ALLOWED, ...DYNAMIC_ALL_ALLOWED],
-    rules: { 'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI, DYNAMIC_UI2] }
+    rules: {
+      'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI, DYNAMIC_UI2, DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS]
+    }
   },
   {
     files: DYNAMIC_UI2_ALLOWED,
-    rules: { 'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI] }
+    rules: { 'no-restricted-syntax': ['error', DYNAMIC_EMOTION_MUI, DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS] }
+  },
+  {
+    files: DYNAMIC_ALL_ALLOWED,
+    rules: { 'no-restricted-syntax': ['error', DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS] }
+  },
+  {
+    files: ['e2e/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [ETHERS, DCL_TRANSACTIONS] }],
+      'no-restricted-syntax': ['error', DYNAMIC_ETHERS, DYNAMIC_DCL_TRANSACTIONS]
+    }
   },
 
   // Mocks and fixtures legitimately traffic in `any` and unbound methods, so the
   // no-unsafe-* family is high-noise here — real source stays strict.
   {
-    files: ['**/*.spec.{ts,tsx}', '**/*.test.{ts,tsx}'],
+    files: SPEC_FILES,
     rules: {
       '@typescript-eslint/unbound-method': 'off',
       '@typescript-eslint/no-explicit-any': 'off',

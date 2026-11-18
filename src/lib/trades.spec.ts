@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ethers } from 'ethers'
 import { Network, TradeAssetType, TradeType, type Trade, type TradeCreation } from '@dcl/schemas'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
+import { zeroAddress } from 'viem'
 
 vi.mock('~/lib/auth', async () => {
   const actual = await vi.importActual<typeof import('~/lib/auth')>('~/lib/auth')
@@ -9,6 +9,7 @@ vi.mock('~/lib/auth', async () => {
 })
 
 import { readContract, signedFetch } from '~/lib/auth'
+import { typedDataDigest } from '~/test/chain'
 import {
   OFFCHAIN_MARKETPLACE_TYPES,
   TradeConflictError,
@@ -64,7 +65,7 @@ describe('getTradeDomain', () => {
     expect(getTradeDomain(CHAIN_ID)).toEqual({
       name: contract.name,
       version: contract.version,
-      salt: ethers.utils.hexZeroPad(ethers.utils.hexlify(CHAIN_ID), 32),
+      salt: '0x' + CHAIN_ID.toString(16).padStart(64, '0'),
       verifyingContract: contract.address
     })
   })
@@ -87,16 +88,17 @@ describe('toTradeTypedValues', () => {
       sent: [{ assetType: 4, contractAddress: COLLECTION, value: '7', extra: '0x' }],
       received: [{ assetType: 2, contractAddress: MANA, value: '500000000000000000', extra: '0x', beneficiary: SIGNER }]
     })
-    // The struct must encode under the EIP-712 types, otherwise the wallet refuses to sign it.
-    const types = { ...OFFCHAIN_MARKETPLACE_TYPES }
-    expect(() => ethers.utils._TypedDataEncoder.hash(getTradeDomain(CHAIN_ID), types, values)).not.toThrow()
+    // What the wallet signs and the marketplace recovers the signer from.
+    expect(typedDataDigest(getTradeDomain(CHAIN_ID), OFFCHAIN_MARKETPLACE_TYPES, values)).toBe(
+      '0xfc5244b13838fde268d232e2e06c9720b233590078a5dbd7c2ce17bebe156e9f'
+    )
   })
 })
 
 describe('fetchSignatureIndexes', () => {
   it('reads both indexes from the marketplace contract', async () => {
     vi.mocked(readContract).mockImplementation(async (_contract, method) =>
-      ethers.BigNumber.from(method === 'contractSignatureIndex' ? 1 : 4)
+      method === 'contractSignatureIndex' ? 1n : 4n
     )
     await expect(fetchSignatureIndexes(SIGNER, CHAIN_ID)).resolves.toEqual({
       contractSignatureIndex: 1,
@@ -120,8 +122,38 @@ describe('createTrade', () => {
       SIGNER,
       'https://marketplace-api.decentraland.zone',
       '/v1/trades',
-      expect.objectContaining({ method: 'POST', body: JSON.stringify(signed) }),
+      expect.objectContaining({ method: 'POST' }),
       { signer: 'dcl:builder', intent: 'dcl:create-trade' }
+    )
+    // Amounts stay decimal strings on the wire.
+    expect(vi.mocked(signedFetch).mock.calls[0][3]?.body).toBe(
+      JSON.stringify({
+        signer: '0x00000000000000000000000000000000000000aa',
+        network: 'MATIC',
+        chainId: 80002,
+        type: 'public_item_order',
+        checks: {
+          uses: 90,
+          expiration: 4102444800000,
+          effective: 1757500000123,
+          salt: '0x01',
+          contractSignatureIndex: 2,
+          signerSignatureIndex: 3,
+          allowedRoot: '0x',
+          externalChecks: []
+        },
+        sent: [{ assetType: 4, contractAddress: '0x00000000000000000000000000000000000000cc', itemId: '7', extra: '' }],
+        received: [
+          {
+            assetType: 2,
+            contractAddress: '0x7ad72b9f944ea9793cf4055d88f81138cc2c63a0',
+            amount: '500000000000000000',
+            extra: '',
+            beneficiary: '0x00000000000000000000000000000000000000aa'
+          }
+        ],
+        signature: '0xsig'
+      })
     )
   })
 
@@ -150,7 +182,7 @@ describe('toOnChainTrade', () => {
     expect(onChain.signature).toBe('0xsig')
     expect(onChain.checks.allowedProof).toEqual([])
     expect(onChain.checks.expiration).toBe(4102444800)
-    expect(onChain.sent[0]).toMatchObject({ value: '7', beneficiary: ethers.constants.AddressZero })
+    expect(onChain.sent[0]).toMatchObject({ value: '7', beneficiary: zeroAddress })
     expect(onChain.received[0]).toMatchObject({ beneficiary: SIGNER })
   })
 })

@@ -4,7 +4,10 @@ import { manifest } from '@dcl-regenesislabs/wearable-validator'
 import { BodyShapeType } from './items'
 import {
   ItemFileError,
+  MAX_EMOTE_FILE_SIZE,
+  MAX_SKIN_FILE_SIZE,
   MAX_THUMBNAIL_FILE_SIZE,
+  MAX_WEARABLE_FILE_SIZE,
   cleanAssetName,
   cleanContentModelKeys,
   findOrphanedAuxiliaryFiles,
@@ -127,7 +130,7 @@ describe('loadItemFile', () => {
   })
 
   it('rejects files over the size cap', async () => {
-    const big = new File([new Uint8Array(9 * 1024 * 1024)], 'huge.glb')
+    const big = new File([new Uint8Array(9 * 1024 * 1024 + 1)], 'huge.glb')
     await expectItemFileError(loadItemFile(big), 'file_too_big')
   })
 
@@ -158,6 +161,15 @@ describe('loadItemFile', () => {
     const result = await loadItemFile(file)
     expect(result.model).toBe('model.glb')
     expect(Object.keys(result.contents).sort()).toEqual(['model.glb', 'texture.png'])
+  })
+
+  it('takes back a downloaded item whose body shapes were folded into the root, with no body shape set', async () => {
+    const result = await loadItemFile(
+      await zipFile({ 'hat.glb': 'glb', 'hat.png': 'texture', 'thumbnail.png': 'thumb', 'image.png': 'catalyst' })
+    )
+    expect(result.model).toBe('hat.glb')
+    expect(result.bodyShape).toBeNull()
+    expect(Object.keys(result.contents).sort()).toEqual(['hat.glb', 'hat.png', 'image.png', 'thumbnail.png'])
   })
 
   it('strips a wrapping folder inside a zip', async () => {
@@ -493,6 +505,30 @@ describe('loadItemFile', () => {
       ])
     })
 
+    it('round-trips a downloaded smart wearable whose body shapes were folded into the root', async () => {
+      const result = await loadItemFile(
+        await zipFile({
+          'thumbnail.png': 'thumb',
+          'image.png': 'catalyst',
+          'video.mp4': 'video',
+          'scene.json': scene(),
+          'bin/game.js': 'code',
+          'glasses.glb': 'glb'
+        })
+      )
+      expect(result.scene?.main).toBe('bin/game.js')
+      expect(result.model).toBe('glasses.glb')
+      expect(result.bodyShape).toBe(BodyShapeType.BOTH)
+      expect(Object.keys(result.contents).sort()).toEqual([
+        'bin/game.js',
+        'glasses.glb',
+        'image.png',
+        'scene.json',
+        'thumbnail.png',
+        'video.mp4'
+      ])
+    })
+
     it('rejects a downloaded smart wearable whose male and female code differ', async () => {
       await expectItemFileError(
         loadItemFile(
@@ -658,5 +694,11 @@ describe('validateVideoFile', () => {
 describe('rule book parity', () => {
   it('blocks thumbnails at the validator manifest size cap', () => {
     expect(MAX_THUMBNAIL_FILE_SIZE).toBe(manifest.fileSize.thumbnailBytes)
+  })
+
+  it('caps whole items at the validator manifest limits: 3 MB wearables and emotes, 9 MB skins', () => {
+    expect(MAX_WEARABLE_FILE_SIZE).toBe(manifest.fileSize.wearableBytes)
+    expect(MAX_EMOTE_FILE_SIZE).toBe(manifest.fileSize.emoteBytes)
+    expect(MAX_SKIN_FILE_SIZE).toBe(manifest.fileSize.skinBytes)
   })
 })

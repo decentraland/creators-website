@@ -32,6 +32,8 @@ export type AvatarPreviewState = AvatarColors & {
   dressedKinds: Record<string, DressedKind>
   emote: PreviewEmote
   isPlaying: boolean
+  /** The scene boundaries (the cylinder an item must fit in) drawn around the avatar. */
+  showSceneBoundaries: boolean
   setBodyShape: (bodyShape: BodyShape) => void
   setColor: (slot: keyof AvatarColors, hex: string) => void
   setBaseWearable: (bodyShape: BodyShape, category: BaseWearableCategory, urn: string | null) => void
@@ -48,6 +50,7 @@ export type AvatarPreviewState = AvatarColors & {
   setEmote: (emote: PreviewEmote) => void
   endEmote: () => void
   setPlaying: (isPlaying: boolean) => void
+  toggleSceneBoundaries: () => void
 }
 
 const initialColors = getRandomColors()
@@ -60,6 +63,7 @@ export const useAvatarPreview = create<AvatarPreviewState>()((set, get) => ({
   dressedKinds: {},
   emote: PreviewEmote.IDLE,
   isPlaying: false,
+  showSceneBoundaries: false,
   setBodyShape: bodyShape => set({ bodyShape }),
   setColor: (slot, hex) => set({ [slot]: hex }),
   setBaseWearable: (bodyShape, category, urn) =>
@@ -95,7 +99,8 @@ export const useAvatarPreview = create<AvatarPreviewState>()((set, get) => ({
   clearDressed: () => set(EMPTY_DRESSING),
   setEmote: emote => set({ emote }),
   endEmote: () => set({ emote: PreviewEmote.IDLE, isPlaying: false }),
-  setPlaying: isPlaying => set({ isPlaying })
+  setPlaying: isPlaying => set({ isPlaying }),
+  toggleSceneBoundaries: () => set(state => ({ showSceneBoundaries: !state.showSceneBoundaries }))
 }))
 
 const EMPTY_DRESSING: Dressing = { dressedItemIds: [], dressedKinds: {} }

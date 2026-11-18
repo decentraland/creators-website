@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material'
+import { ChevronLeftIcon, ChevronRightIcon } from '~/components/Icons'
 import { type ContractNetwork } from '@dcl/schemas'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
@@ -10,8 +10,9 @@ import { Button } from '~/components/Button'
 import { Checkbox } from '~/components/Checkbox'
 import { CategoryIcon } from '~/components/ItemIcons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
-import * as S from '../../PublishCollectionModal/PublishCollectionModal.styles'
-import * as R from './LinkedPublishRow.styles'
+import { cx } from '~/lib/cx'
+import publishRow from './LinkedPublishRow.module.css'
+import publishModal from '~/components/CollectionDetailPage/PublishCollectionModal/PublishCollectionModal.module.css'
 
 type Props = {
   collection: Collection
@@ -46,58 +47,58 @@ export function LinkedItemsStep({
         .map(label => t(label.id, label.values))
         .join(' · ')
       return (
-        <R.Row key={item.id} data-testid={testId}>
-          <R.Name>
-            <S.Thumb>
+        <div className={cx(publishRow.columns, publishRow.row)} key={item.id} data-testid={testId}>
+          <span className={publishRow.name}>
+            <span className={publishModal.thumb}>
               <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
-            </S.Thumb>
+            </span>
             <span title={item.name}>{item.name}</span>
-          </R.Name>
+          </span>
           <span>{item.data.category ? <CategoryIcon category={item.data.category} withLabel /> : '—'}</span>
-          <R.Mapping title={mapping} data-testid={`${testId}-mapping`}>
+          <span className={publishRow.mapping} title={mapping} data-testid={`${testId}-mapping`}>
             {mapping}
-          </R.Mapping>
-        </R.Row>
+          </span>
+        </div>
       )
     })
 
   return (
-    <S.Step data-testid="publish-linked-items-step">
-      <S.Heading>{t('publish_linked_modal.items_step.title')}</S.Heading>
-      <S.Text>{t('publish_linked_modal.items_step.description')}</S.Text>
+    <div className={publishModal.step} data-testid="publish-linked-items-step">
+      <h3 className={publishModal.heading}>{t('publish_linked_modal.items_step.title')}</h3>
+      <p className={publishModal.text}>{t('publish_linked_modal.items_step.description')}</p>
       {itemsToPublish.length > 0 && (
-        <S.Table>
-          <S.TableHeader style={{ gridTemplateColumns: R.COLUMNS }}>
+        <div className={publishModal.table}>
+          <div className={cx(publishModal.tableHeader, publishRow.columns)}>
             <span>{t('publish_linked_modal.items_step.columns.item', { count: itemsToPublish.length })}</span>
             <span>{t('publish_collection_modal.items_step.columns.category')}</span>
             <span>{t('publish_linked_modal.items_step.columns.linked_to')}</span>
-          </S.TableHeader>
-          <S.TableBody data-testid="publish-linked-items-list">
+          </div>
+          <div className={publishModal.tableBody} data-testid="publish-linked-items-list">
             {renderRows(itemsToPublish, 'publish-linked-item')}
-          </S.TableBody>
-        </S.Table>
+          </div>
+        </div>
       )}
       {itemsToPush.length > 0 && (
-        <S.Table>
-          <S.TableHeader style={{ gridTemplateColumns: R.COLUMNS }}>
+        <div className={publishModal.table}>
+          <div className={cx(publishModal.tableHeader, publishRow.columns)}>
             <span>{t('publish_linked_modal.items_step.columns.changed', { count: itemsToPush.length })}</span>
             <span>{t('publish_collection_modal.items_step.columns.category')}</span>
             <span>{t('publish_linked_modal.items_step.columns.linked_to')}</span>
-          </S.TableHeader>
-          <S.TableBody data-testid="publish-linked-push-list">
+          </div>
+          <div className={publishModal.tableBody} data-testid="publish-linked-push-list">
             {renderRows(itemsToPush, 'publish-linked-push-item')}
-          </S.TableBody>
-        </S.Table>
+          </div>
+        </div>
       )}
       <Checkbox checked={accepted} disabled={isSigning} onChange={setAccepted} testId="publish-linked-items-accept">
         {t('publish_linked_modal.items_step.checkbox')}
       </Checkbox>
       {signError && (
-        <S.ErrorText data-testid="publish-linked-sign-error">
+        <p className={publishModal.errorText} data-testid="publish-linked-sign-error">
           {t('publish_linked_modal.items_step.sign_error')}
-        </S.ErrorText>
+        </p>
       )}
-      <S.Footer>
+      <div className={publishModal.footer}>
         <Button type="button" variant="secondary" disabled={isSigning} data-testid="publish-back" onClick={onBack}>
           <ChevronLeftIcon fontSize="small" />
           {t('publish_collection_modal.back')}
@@ -116,7 +117,7 @@ export function LinkedItemsStep({
           )}
           <ChevronRightIcon fontSize="small" />
         </Button>
-      </S.Footer>
-    </S.Step>
+      </div>
+    </div>
   )
 }

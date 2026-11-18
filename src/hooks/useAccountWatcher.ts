@@ -1,12 +1,7 @@
 import { useEffect } from 'react'
-import { ProviderType } from '@dcl/schemas'
+import { ProviderType } from '@dcl/schemas/dist/dapps/provider-type'
 import { reset as resetAnalytics } from '~/lib/analytics'
 import { useWallet } from '~/store/wallet'
-
-type Eip1193 = {
-  on?: (event: string, cb: (...args: unknown[]) => void) => void
-  removeListener?: (event: string, cb: (...args: unknown[]) => void) => void
-}
 
 // When the user switches (or disconnects) the account in an injected wallet, everything already fetched
 // and every signed request belongs to the previous account. Rather than purging each query and store by
@@ -18,8 +13,8 @@ export function useAccountWatcher() {
   useEffect(() => {
     if (!session || session.providerType !== ProviderType.INJECTED) return
 
-    const provider = session.web3Provider.provider as Eip1193 | undefined
-    if (!provider?.on || !provider.removeListener) return
+    const { provider } = session
+    if (!provider.on || !provider.removeListener) return
 
     const current = session.address.toLowerCase()
 

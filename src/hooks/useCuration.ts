@@ -4,9 +4,11 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 import { errorCode, track } from '~/lib/analytics'
 import { sendContractTransaction, waitForTransaction, type Session } from '~/lib/auth'
 import {
+  isCollectionBusy,
+  isValidationRunning,
+  ValidationLimitError,
   fetchCollection,
   fetchCollectionCuration,
-  fetchCommittee,
   fetchCurationCollections,
   fetchCurations,
   pushCollectionCuration,
@@ -15,35 +17,15 @@ import {
 import { type Collection } from '~/lib/collections'
 import { buildSetApprovedCall } from '~/lib/collectionApproval'
 import { APPROVAL_INDEX_TIMEOUT_MS, waitForIndexer } from '~/lib/approveCollection'
-import { isCommitteeMember, orderCurators, type CollectionCuration, type CurationFilters } from '~/lib/curation'
+import { orderCurators, type CollectionCuration, type CurationFilters } from '~/lib/curation'
 import { shortenAddress } from '~/lib/address'
+import { type RejectReasonCode } from '~/lib/events'
 import { captureError } from '~/lib/monitoring'
 import { postAssignee } from '~/hooks/useForumPost'
+import { useCommittee } from '~/hooks/useCommittee'
 import { useProfiles } from '~/hooks/useProfile'
 import { getMaticChainId } from '~/lib/publishCollection'
-import { isWalletRejection } from '~/lib/walletErrors'
-
-// Same refresh cadence as builder-server's own committee cache.
-const COMMITTEE_STALE_MS = 60 * 60_000
-
-/** Whether the signed-in wallet sits on the curation committee. Fails closed: loading or errored is not a curator. */
-const NO_MEMBERS: string[] = []
-
-export function useCommittee(address: string | undefined) {
-  // Signed-out visitors can't be curators, so they never ask.
-  const query = useQuery({
-    queryKey: ['committee'],
-    queryFn: fetchCommittee,
-    staleTime: COMMITTEE_STALE_MS,
-    enabled: !!address
-  })
-  const members = query.data
-  return {
-    members: members ?? NO_MEMBERS,
-    isCurator: isCommitteeMember(members, address),
-    isLoading: query.isLoading
-  }
-}
+import { isExpectedWalletError } from '~/lib/walletErrors'
 
 /** The committee as picker options, the signed-in curator first and marked, after `leading` and a divider. */
 type CuratorOption = { value: string; label: string; dividerBefore?: boolean }
@@ -72,6 +54,10 @@ export function useCuratorOptions(address: string | undefined, leading: CuratorO
 
 export function collectionCurationKey(address: string | undefined, collectionId: string | undefined) {
   return ['collection-curation', address, collectionId] as const
+}
+
+export function collectionEventsKey(address: string | undefined, collectionId: string | undefined) {
+  return ['collection-events', address, collectionId] as const
 }
 
 /** The collection's latest review request, `null` when it was never requested. */
@@ -110,6 +96,13 @@ export function useCurationCollections(address: string | undefined, filters: Cur
   })
 }
 
+/** Rereads a collection's review: its timeline, its request and the request list. */
+export function refreshReview(queryClient: QueryClient, address: string | undefined, collectionId: string) {
+  void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, collectionId) })
+  void queryClient.invalidateQueries({ queryKey: collectionCurationKey(address, collectionId) })
+  void queryClient.invalidateQueries({ queryKey: ['curations', address] })
+}
+
 /** Shows a collection's new latest curation everywhere it is read, without refetching. */
 export function storeCuration(queryClient: QueryClient, address: string | undefined, curation: CollectionCuration) {
   queryClient.setQueryData(collectionCurationKey(address, curation.collectionId), curation)
@@ -117,6 +110,7 @@ export function storeCuration(queryClient: QueryClient, address: string | undefi
     current ? [...current.filter(existing => existing.collectionId !== curation.collectionId), curation] : current
   )
   void queryClient.invalidateQueries({ queryKey: ['curation-collections'] })
+  void queryClient.invalidateQueries({ queryKey: collectionEventsKey(address, curation.collectionId) })
 }
 
 function useStoreCuration(address: string | undefined) {
@@ -153,7 +147,14 @@ export function useAssignCurator(address: string | undefined) {
   })
 }
 
-export type RejectVariables = { collection: Collection; curation: CollectionCuration | null }
+export type RejectDecision = { rejectionReasons: RejectReasonCode[]; rejectionMessage?: string }
+
+export type RejectVariables = {
+  collection: Collection
+  curation: CollectionCuration | null
+  /** The reasons and message the creator reads; only sent where builder-server's auto-curation accepts them. */
+  decision?: RejectDecision
+}
 
 /**
  * Rejects the collection's review request. A collection nobody requested a review for has no request to
@@ -163,13 +164,22 @@ export function useRejectCuration(address: string | undefined) {
   const queryClient = useQueryClient()
   const store = useStoreCuration(address)
   return useMutation({
-    mutationFn: async ({ collection, curation }: RejectVariables) => {
+    mutationFn: async ({ collection, curation, decision }: RejectVariables) => {
       if (!address) throw new Error('Wallet disconnected')
-      const current = curation?.status === 'pending' ? curation : await pushCollectionCuration(address, collection.id)
-      return updateCollectionCuration(address, current.collectionId, { status: 'rejected' })
+      let current = curation
+      if (current?.status !== 'pending') {
+        current = await pushCollectionCuration(address, collection.id)
+        // Kept even if the PATCH below fails, so a retry patches this request instead of opening another.
+        store(current)
+      }
+      return updateCollectionCuration(address, current.collectionId, { status: 'rejected', ...decision })
     },
-    onSuccess: (curation, { collection, curation: previous }) => {
-      track('Reject curation', { collectionId: collection.id, first_review: !previous })
+    onSuccess: (curation, { collection, curation: previous, decision }) => {
+      track('Reject curation', {
+        collectionId: collection.id,
+        first_review: !previous,
+        reasons: decision?.rejectionReasons ?? []
+      })
       store(curation)
     },
     onError: (error, { collection }) => {
@@ -183,20 +193,36 @@ export function useRejectCuration(address: string | undefined) {
 }
 
 /** The creator's "Publish changes": asks the committee to review the collection's changes again. */
+export type PushVariables = {
+  collection: Collection
+  /** What changed, for the curator; only a server with the review timeline keeps it. */
+  note?: string
+}
+
 export function usePushCuration(address: string | undefined) {
+  const queryClient = useQueryClient()
   const store = useStoreCuration(address)
   return useMutation({
-    mutationFn: (collection: Collection) => {
+    mutationFn: ({ collection, note }: PushVariables) => {
       if (!address) throw new Error('Wallet disconnected')
-      return pushCollectionCuration(address, collection.id)
+      return note
+        ? pushCollectionCuration(address, collection.id, undefined, note)
+        : pushCollectionCuration(address, collection.id)
     },
-    onSuccess: (curation, collection) => {
-      track('Push curation', { collectionId: collection.id, first_review: !collection.isApproved })
+    onSuccess: (curation, { collection, note }) => {
+      track('Push curation', { collectionId: collection.id, first_review: !collection.isApproved, has_note: !!note })
       store(curation)
     },
-    onError: (error, collection) => {
+    onError: (error, { collection }) => {
       track('Push curation error', { collectionId: collection.id, error: errorCode(error) })
-      captureError(error, { flow: 'curation_push', collectionId: collection.id })
+      // A running review, the daily limit and a busy collection are answers the creator acts on, not failures.
+      const expected = error instanceof ValidationLimitError || isValidationRunning(error) || isCollectionBusy(error)
+      if (!expected) {
+        captureError(error, { flow: 'curation_push', collectionId: collection.id })
+        return
+      }
+      // The answer says the review moved on (a run started, the day's runs spent) or will (busy): reread it.
+      refreshReview(queryClient, address, collection.id)
     }
   })
 }
@@ -231,7 +257,7 @@ export function useDisableCollection(session: Session | null) {
     },
     onError: (error, { collection }) => {
       track('Reject collection error', { collectionId: collection.id, error: errorCode(error) })
-      if (!isWalletRejection(error)) {
+      if (!isExpectedWalletError(error)) {
         captureError(error, { flow: 'curation_disable', collectionId: collection.id })
       }
     }

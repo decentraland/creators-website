@@ -1,9 +1,16 @@
-import { Check as CheckIcon, ErrorRounded as ErrorIcon } from '@mui/icons-material'
-import { EmoteIcon, SmartIcon, TrashIcon, WearableIcon } from '~/components/Icons'
+import {
+  EmoteIcon,
+  SmartIcon,
+  TrashIcon,
+  WearableIcon,
+  CheckIcon,
+  ErrorRoundedIcon as ErrorIcon
+} from '~/components/Icons'
 import { useTranslation } from '~/intl'
+import { isThumbnailGenerating } from '~/lib/draftPreview'
 import { ItemType } from '~/lib/items'
 import { type ItemDraft } from './AddItemsModal.state'
-import * as S from './AddItemsModal.styles'
+import styles from './AddItemsModal.module.css'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 
 type Props = {
@@ -18,42 +25,59 @@ export function DraftList({ drafts, selectedId, onSelect, onRemove }: Props) {
   const { t } = useTranslation()
 
   return (
-    <S.Sidebar data-testid="draft-list">
+    <aside className={styles.sidebar} data-testid="draft-list">
       {drafts.map(draft => (
-        <S.DraftCard
+        <button
+          className={styles.draftCard}
           key={draft.id}
           type="button"
           data-testid={`draft-${draft.id}`}
+          data-file-name={draft.fileName}
+          data-status={draft.status}
           data-selected={draft.id === selectedId || undefined}
           data-failed={draft.status === 'failed' || undefined}
           data-checked={draft.checked || undefined}
           onClick={() => onSelect(draft.id)}
         >
-          <S.DraftThumbWrap>
-            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId={`draft-thumbnail-${draft.id}`} />
+          <span className={styles.draftThumbWrap}>
+            <ItemThumbnail
+              src={draft.thumbnail}
+              rarity={draft.rarity}
+              testId={`draft-thumbnail-${draft.id}`}
+              loading={draft.status === 'processing' || (draft.status === 'ready' && isThumbnailGenerating(draft))}
+            />
             {draft.status !== 'failed' && (
-              <S.DraftCheck data-checked={draft.checked || undefined} data-testid={`draft-check-${draft.id}`}>
+              <span
+                className={styles.draftCheck}
+                data-checked={draft.checked || undefined}
+                data-testid={`draft-check-${draft.id}`}
+              >
                 {draft.checked && <CheckIcon />}
-              </S.DraftCheck>
+              </span>
             )}
-          </S.DraftThumbWrap>
-          <S.DraftInfo>
-            <S.DraftName>{draft.name || draft.fileName}</S.DraftName>
+          </span>
+          <span className={styles.draftInfo}>
+            <span className={styles.draftName}>{draft.name || draft.fileName}</span>
             {draft.status === 'failed' ? (
-              <S.DraftError data-testid={`draft-error-${draft.id}`}>
+              <span className={styles.draftError} data-testid={`draft-error-${draft.id}`}>
                 <ErrorIcon />
                 {t('add_items_modal.file_error_label')}
-              </S.DraftError>
+              </span>
             ) : draft.status === 'processing' || !draft.type ? (
-              <S.DraftType>{t('add_items_modal.processing')}</S.DraftType>
+              <span className={styles.draftType}>{t('add_items_modal.processing')}</span>
             ) : (
-              <S.DraftType data-testid={`draft-type-${draft.id}`} data-smart={draft.isSmart || undefined}>
+              <span
+                className={styles.draftType}
+                data-testid={`draft-type-${draft.id}`}
+                data-smart={draft.isSmart || undefined}
+              >
                 {draft.type === ItemType.EMOTE ? <EmoteIcon /> : draft.isSmart ? <SmartIcon /> : <WearableIcon />}
                 {t(draft.isSmart ? 'add_items_modal.type.smart_wearable' : `add_items_modal.type.${draft.type}`)}
-              </S.DraftType>
+              </span>
             )}
-          </S.DraftInfo>
-          <S.DeleteButton
+          </span>
+          <span
+            className={styles.deleteButton}
             role="button"
             aria-label={t('add_items_modal.delete')}
             title={t('add_items_modal.delete')}
@@ -64,9 +88,9 @@ export function DraftList({ drafts, selectedId, onSelect, onRemove }: Props) {
             }}
           >
             <TrashIcon />
-          </S.DeleteButton>
-        </S.DraftCard>
+          </span>
+        </button>
       ))}
-    </S.Sidebar>
+    </aside>
   )
 }

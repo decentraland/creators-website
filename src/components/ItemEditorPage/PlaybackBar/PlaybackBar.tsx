@@ -1,12 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { PreviewEmote, PreviewEmoteEventType, type IPreviewController } from '@dcl/schemas'
-import {
-  Bookmark as CollectionIcon,
-  Stop as StopIcon,
-  VolumeOff as VolumeOffIcon,
-  VolumeUp as VolumeUpIcon
-} from '@mui/icons-material'
-import { EmoteControls } from '~/components/PreviewControls'
+import { PreviewEmote, PreviewEmoteEventType } from '@dcl/schemas'
+import { BookmarkIcon as CollectionIcon, StopIcon, VolumeOffIcon, VolumeUpIcon } from '~/components/Icons'
+import { EmoteControls, type WearablePreviewController } from '~/components/WearablePreview'
 import { Select } from '~/components/Select'
 import { Tooltip } from '~/components/Tooltip'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
@@ -14,12 +9,12 @@ import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { ItemType, type Item } from '~/lib/items'
 import { useAvatarPreview } from '~/store/avatarPreview'
-import { theme } from '~/styles/theme'
-import * as S from './PlaybackBar.styles'
+import { media } from '~/styles/theme'
+import styles from './PlaybackBar.module.css'
 
 type Props = {
   previewId: string
-  controller: IPreviewController | null
+  controller: WearablePreviewController | null
   /** The collection's emotes, offered next to the default animations. */
   collectionEmotes: Item[]
   /** The wearables currently on the avatar — reported alongside the emote, as the legacy editor does. */
@@ -38,7 +33,7 @@ const DEFAULT_EMOTES = Object.values(PreviewEmote).filter(
  * Whether the subject emote has audio, and its mute toggle. ui2's own sound button asks once, on mount,
  * before the iframe has loaded the emote, so it never shows; this asks again on every play instead.
  */
-function useEmoteSound(controller: IPreviewController | null, subjectEmoteId: string | null) {
+function useEmoteSound(controller: WearablePreviewController | null, subjectEmoteId: string | null) {
   const [hasSound, setHasSound] = useState(false)
   const [muted, setMuted] = useState(false)
   const mutedRef = useRef(muted)
@@ -87,7 +82,7 @@ export function PlaybackBar({
   testId = 'playback-bar'
 }: Props) {
   const { t } = useTranslation()
-  const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
+  const isMobile = useMediaQuery(media.maxWidth('mobile'))
   const emote = useAvatarPreview(state => state.emote)
   const dressedItemIds = useAvatarPreview(state => state.dressedItemIds)
   const setEmote = useAvatarPreview(state => state.setEmote)
@@ -106,9 +101,14 @@ export function PlaybackBar({
         label: item.name,
         trailing: (
           <Tooltip content={t('item_editor.playback.from_collection')} asChild testId={`${testId}-from-collection`}>
-            <S.CollectionBadge data-icon-badge tabIndex={0} aria-label={t('item_editor.playback.from_collection')}>
+            <span
+              className={styles.collectionBadge}
+              data-icon-badge
+              tabIndex={0}
+              aria-label={t('item_editor.playback.from_collection')}
+            >
               <CollectionIcon />
-            </S.CollectionBadge>
+            </span>
           </Tooltip>
         )
       })),
@@ -158,21 +158,23 @@ export function PlaybackBar({
 
   const stopButton = (
     <Tooltip content={t('item_editor.playback.stop')} asChild testId={`${testId}-stop-tooltip`}>
-      <S.Control
+      <button
+        className={styles.control}
         type="button"
         aria-label={t('item_editor.playback.stop')}
         data-testid={`${testId}-stop`}
         onClick={stop}
       >
         <StopIcon fontSize="small" />
-      </S.Control>
+      </button>
     </Tooltip>
   )
 
   const soundLabel = t(sound.muted ? 'item_editor.playback.unmute' : 'item_editor.playback.mute')
   const soundButton = sound.hasSound && (
     <Tooltip content={soundLabel} asChild testId={`${testId}-sound-tooltip`}>
-      <S.Control
+      <button
+        className={styles.control}
         type="button"
         aria-label={soundLabel}
         aria-pressed={sound.muted}
@@ -181,25 +183,25 @@ export function PlaybackBar({
         onClick={sound.toggle}
       >
         {sound.muted ? <VolumeOffIcon fontSize="small" /> : <VolumeUpIcon fontSize="small" />}
-      </S.Control>
+      </button>
     </Tooltip>
   )
 
   if (subjectEmoteId) {
     return (
-      <S.EmoteControlsWrap data-testid={`${testId}-emote-controls`}>
+      <div className={styles.emoteControlsWrap} data-testid={`${testId}-emote-controls`}>
         {/* The frame counter is what gives way when the row has to fit a phone. */}
-        <EmoteControls key={subjectEmoteId} wearablePreviewId={previewId} hideFrameInput={isMobile} hideSoundButton />
+        <EmoteControls key={subjectEmoteId} previewId={previewId} hideFrameInput={isMobile} hideSoundButton />
         {soundButton}
         {stopButton}
-      </S.EmoteControlsWrap>
+      </div>
     )
   }
 
   const isEmoteActive = emote !== PreviewEmote.IDLE || dressedEmote !== null
 
   return (
-    <S.Wrap data-testid={testId} data-playing={isEmoteActive || undefined}>
+    <div className={styles.wrap} data-testid={testId} data-playing={isEmoteActive || undefined}>
       <Select
         value={dressedEmote?.id ?? (isEmoteActive ? emote : null)}
         options={options}
@@ -210,11 +212,11 @@ export function PlaybackBar({
         onChange={select}
       />
       {isEmoteActive && (
-        <S.StopButton type="button" data-testid={`${testId}-stop`} onClick={stop}>
+        <button className={styles.stopButton} type="button" data-testid={`${testId}-stop`} onClick={stop}>
           <StopIcon fontSize="small" />
           {t('item_editor.playback.stop')}
-        </S.StopButton>
+        </button>
       )}
-    </S.Wrap>
+    </div>
   )
 }

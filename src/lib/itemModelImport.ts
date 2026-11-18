@@ -4,7 +4,6 @@ import { type WearableCategory } from '@dcl/schemas'
 import {
   addRepresentationToItem,
   getKeptRepresentationPaths,
-  getSizeError,
   withReplacedModel,
   withReplacedRepresentation,
   type BuiltItem
@@ -224,7 +223,7 @@ export async function buildModelUpdate(
     )
   }
 
-  const sizeError = getSizeError(item.type, item.data.category, built.blobs)
-  if (sizeError !== null) throw new ItemFileError('size_exceeded', { size: sizeError })
+  // Not size-checked here: these are only the new files. The whole item, with the files it keeps, its thumbnail and
+  // rarity image, is measured by the modal and re-checked by the save (lib/itemSize).
   return built
 }

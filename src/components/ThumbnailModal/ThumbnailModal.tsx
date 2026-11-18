@@ -1,17 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { PreviewProjection, type IPreviewController } from '@dcl/schemas'
-import { WearablePreview } from 'decentraland-ui2'
-import { VerticalPosition } from 'decentraland-ui2/dist/components/WearablePreview/TranslationControls'
+import { PreviewProjection, PreviewRenderer } from '@dcl/schemas'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
-import { EmoteControls, TranslationControls } from '~/components/PreviewControls'
+import {
+  EmoteControls,
+  WearablePreview,
+  TranslationControls,
+  createWearablePreviewController,
+  type WearablePreviewController
+} from '~/components/WearablePreview'
 import { ZoomControls } from '~/components/ZoomControls'
+import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { useTranslation } from '~/intl'
+import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
 import { MAX_THUMBNAIL_FILE_SIZE, THUMBNAIL_PATH, toMB } from '~/lib/itemFiles'
+import { isItemTooBigError } from '~/lib/itemSize'
 import { ItemType } from '~/lib/items'
 import { ImageType, dataURLToBlob, getImageType, resizeImage, blobToDataURL } from '~/lib/media'
-import { toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
-import * as S from './ThumbnailModal.styles'
+import { retryWhilePreviewReloads, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
+import styles from './ThumbnailModal.module.css'
 
 const PREVIEW_ID = 'thumbnail-editor'
 const THUMBNAIL_SIZE = 1024
@@ -27,11 +34,14 @@ export type ThumbnailPatch = {
 export class ThumbnailFormatError extends Error {}
 export class ThumbnailTooBigError extends Error {}
 
-/** The i18n key (with params) for a failed capture or upload. */
+/** The i18n key (with params) for a failed capture, upload or save. */
 export function getThumbnailErrorMessage(err: unknown): { key: string; params?: Record<string, string | number> } {
   if (err instanceof ThumbnailFormatError) return { key: 'thumbnail_modal.wrong_format' }
   if (err instanceof ThumbnailTooBigError)
     return { key: 'thumbnail_modal.too_big', params: { size: toMB(MAX_THUMBNAIL_FILE_SIZE) } }
+  if (isItemTooBigError(err)) return { key: 'add_items_modal.file_error.size_exceeded', params: err.messageParams }
+  if (err instanceof BuilderServerError && err.status === COLLECTION_LOCKED_STATUS)
+    return { key: 'item_editor.save_error_locked' }
   return { key: 'thumbnail_modal.capture_failed' }
 }
 
@@ -59,18 +69,19 @@ type Props = {
   contents: Record<string, Blob> | null
   /** Shown in place of the preview when the files could not be fetched. */
   loadError?: boolean
-  onSave: (patch: ThumbnailPatch) => void
+  /** A rejection keeps the modal open with the error. */
+  onSave: (patch: ThumbnailPatch) => void | Promise<void>
   onClose: () => void
 }
 
 /**
- * Interactive thumbnail editor: pose/zoom the item in a live WearablePreview and capture, or
+ * Interactive thumbnail editor: pose/zoom the item in a live preview and capture, or
  * (wearables only) upload a PNG instead. Image-only wearables never reach this modal.
  */
 export function ThumbnailModal({ type, contents, loadError = false, onSave, onClose }: Props) {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [controller, setController] = useState<IPreviewController | null>(null)
+  const [controller, setController] = useState<WearablePreviewController | null>(null)
   const [isLoaded, setLoaded] = useState(false)
   const isReady = controller !== null && isLoaded
   // Which button started the save, so its spinner shows while the caller's save settles.
@@ -78,6 +89,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
   const isSaving = saving !== null
   const [error, setError] = useState<string | null>(null)
 
+  const renderer = usePreviewRenderer()
   const isEmote = type === ItemType.EMOTE
   // A new blob reference remounts the preview iframe, so keep it stable across local state changes.
   const blob = useMemo(
@@ -85,15 +97,15 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
     [isEmote, contents]
   )
 
-  // One controller, created as soon as the iframe exists and shared with the ui2 controls: every
+  // One controller, created as soon as the iframe exists and shared with the preview controls: every
   // createController call drops the requests in flight, and a late one (in onLoad, or a control
   // mounting after it) swallows the length EmoteControls asks for on the autoplay PLAY, leaving its
   // play/pause stuck until the emote ends.
-  const hasBlob = blob !== null
+  const isMounted = blob !== null && renderer !== undefined
   useEffect(() => {
-    setController(hasBlob ? WearablePreview.createController(PREVIEW_ID) : null)
-    if (!hasBlob) setLoaded(false)
-  }, [hasBlob])
+    setController(isMounted ? createWearablePreviewController(PREVIEW_ID) : null)
+    if (!isMounted) setLoaded(false)
+  }, [isMounted])
 
   function errorText(err: unknown): string {
     const { key, params } = getThumbnailErrorMessage(err)
@@ -107,8 +119,10 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
     void (async () => {
       try {
         if (isEmote) await controller.emote.pause()
-        const screenshot = await controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
-        onSave(thumbnailPatchFromDataURL(contents!, screenshot))
+        const screenshot = await retryWhilePreviewReloads(() =>
+          controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
+        )
+        await onSave(thumbnailPatchFromDataURL(contents!, screenshot))
       } catch (err) {
         setError(errorText(err))
         setSaving(null)
@@ -124,7 +138,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
     void (async () => {
       try {
         // A picked file needs neither the item files nor the preview.
-        onSave(await thumbnailPatchFromFile(contents ?? {}, file))
+        await onSave(await thumbnailPatchFromFile(contents ?? {}, file))
       } catch (err) {
         setError(errorText(err))
         setSaving(null)
@@ -140,16 +154,19 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
       size="wide"
       testId="thumbnail-modal"
     >
-      <S.Wrap>
-        <S.PreviewArea data-testid="thumbnail-preview">
-          {!blob && !loadError && <S.Spinner aria-hidden data-testid="thumbnail-loading" />}
+      <div className={styles.wrap}>
+        <div className={styles.previewArea} data-testid="thumbnail-preview">
+          {!isMounted && !loadError && <span className={styles.spinner} aria-hidden data-testid="thumbnail-loading" />}
           {loadError && (
-            <S.LoadError data-testid="thumbnail-load-error">{t('thumbnail_modal.load_failed')}</S.LoadError>
+            <p className={styles.loadError} data-testid="thumbnail-load-error">
+              {t('thumbnail_modal.load_failed')}
+            </p>
           )}
-          {blob && (
+          {isMounted && (
             <WearablePreview
               id={PREVIEW_ID}
               blob={blob}
+              unity={renderer === PreviewRenderer.UNITY}
               disableBackground
               disableAutoRotate
               projection={PreviewProjection.PERSPECTIVE}
@@ -167,32 +184,32 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
               onLoad={() => setLoaded(true)}
             />
           )}
-          <S.Frame aria-hidden data-testid="thumbnail-frame" />
+          <div className={styles.frame} aria-hidden data-testid="thumbnail-frame" />
           {isReady && (
             <>
-              <ZoomControls className="zoom-controls" controller={controller} />
+              <ZoomControls className={styles.zoomControls} controller={controller} />
               <TranslationControls
-                className="translation-controls"
+                className={styles.translationControls}
                 vertical
-                verticalPosition={VerticalPosition.LEFT}
-                wearablePreviewId={PREVIEW_ID}
-                wearablePreviewController={controller}
+                verticalPosition="left"
+                previewId={PREVIEW_ID}
+                controller={controller}
               />
             </>
           )}
-        </S.PreviewArea>
+        </div>
         {/* Mounted before the iframe loads so the PLAY event fired at load time is delivered. */}
         {isEmote && controller && (
-          <S.EmoteBar data-testid="thumbnail-emote-controls" data-ready={isReady}>
-            <EmoteControls
-              className="emote-controls"
-              wearablePreviewId={PREVIEW_ID}
-              wearablePreviewController={controller}
-            />
-          </S.EmoteBar>
+          <div className={styles.emoteBar} data-testid="thumbnail-emote-controls" data-ready={isReady}>
+            <EmoteControls className={styles.emoteControls} previewId={PREVIEW_ID} controller={controller} />
+          </div>
         )}
-        {error && <S.ErrorText data-testid="thumbnail-error">{error}</S.ErrorText>}
-        <S.Actions>
+        {error && (
+          <p className={styles.errorText} data-testid="thumbnail-error">
+            {error}
+          </p>
+        )}
+        <div className={styles.actions}>
           {!isEmote && (
             <>
               <input
@@ -228,8 +245,8 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
           >
             {t('thumbnail_modal.capture')}
           </Button>
-        </S.Actions>
-      </S.Wrap>
+        </div>
+      </div>
     </Modal>
   )
 }

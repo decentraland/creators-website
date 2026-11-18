@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   fetchAllLinkedCollectionItems,
@@ -22,12 +22,26 @@ import { getThirdPartyId } from '~/lib/thirdParty'
  * The drafts of a linked collection (never submitted, or rejected). builder-server filters by a curation's status but
  * not by its absence, so every item and curation is read and filtered here.
  */
-export async function fetchDraftLinkedItems(address: string, collectionId: string): Promise<Item[]> {
+async function fetchDraftLinkedItems(address: string, collectionId: string): Promise<Item[]> {
   const [items, curations] = await Promise.all([
     fetchAllLinkedCollectionItems(address, collectionId),
     fetchItemCurations(address, collectionId)
   ])
   return items.filter(item => isLinkedDraft(curations.get(item.id)))
+}
+
+/**
+ * Reads every item of a linked collection across pages: under a filter (drafts included) for "Select all", or all
+ * of them without one.
+ */
+export function useFetchLinkedItems(address: string, collectionId: string) {
+  return useCallback(
+    (filter?: LinkedItemFilter): Promise<Item[]> =>
+      filter === LinkedItemFilter.DRAFT
+        ? fetchDraftLinkedItems(address, collectionId)
+        : fetchAllLinkedCollectionItems(address, collectionId, filter ? linkedItemFilterToQuery(filter) : {}),
+    [address, collectionId]
+  )
 }
 
 // Same page size as the legacy third-party collection page.

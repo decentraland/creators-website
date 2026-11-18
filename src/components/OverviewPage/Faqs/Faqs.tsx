@@ -6,7 +6,9 @@ import { useSectionViewed } from '~/hooks/useSectionViewed'
 import { englishMessage, useTranslation } from '~/intl'
 import { OverviewSection, trackClick } from '~/lib/overviewAnalytics'
 import { FAQS_URL, faqIds } from '../data'
-import * as S from './Faqs.styles'
+import { cx } from '~/lib/cx'
+import overview from '../OverviewPage.module.css'
+import styles from './Faqs.module.css'
 
 type FaqRowProps = { id: string; open: boolean; onToggle: () => void }
 
@@ -27,7 +29,8 @@ const FaqRow = ({ id, open, onToggle }: FaqRowProps) => {
   }
 
   return (
-    <S.Row
+    <div
+      className={styles.row}
       role="button"
       tabIndex={0}
       aria-expanded={open}
@@ -39,14 +42,22 @@ const FaqRow = ({ id, open, onToggle }: FaqRowProps) => {
       onClick={toggle}
       onKeyDown={onKeyDown}
     >
-      <S.Question>
-        <S.QuestionText id={`faq-question-${id}`}>{t(questionKey)}</S.QuestionText>
+      <div className={styles.question}>
+        <h3 className={styles.questionText} id={`faq-question-${id}`}>
+          {t(questionKey)}
+        </h3>
         <CircleAndArrowIcon />
-      </S.Question>
-      <S.Answer id={`faq-answer-${id}`} role="region" aria-labelledby={`faq-question-${id}`} aria-hidden={!open}>
-        <S.AnswerText>{t(`overview.faqs.items.${id}.answer`)}</S.AnswerText>
-      </S.Answer>
-    </S.Row>
+      </div>
+      <div
+        className={styles.answer}
+        id={`faq-answer-${id}`}
+        role="region"
+        aria-labelledby={`faq-question-${id}`}
+        aria-hidden={!open}
+      >
+        <p className={styles.answerText}>{t(`overview.faqs.items.${id}.answer`)}</p>
+      </div>
+    </div>
   )
 }
 
@@ -71,18 +82,23 @@ const Faqs = () => {
   )
 
   return (
-    <S.Section ref={ref} aria-label={t('overview.faqs.aria_label')} data-testid="overview-faqs">
+    <section
+      className={styles.section}
+      ref={ref}
+      aria-label={t('overview.faqs.aria_label')}
+      data-testid="overview-faqs"
+    >
       <script type="application/ld+json" data-testid="overview-faqs-structured-data">
         {structuredData}
       </script>
-      <S.Frame>
-        <S.Container>
-          <S.Subtitle>{t('overview.faqs.subtitle')}</S.Subtitle>
-          <S.Title>{t('overview.faqs.title')}</S.Title>
+      <div className={styles.frame}>
+        <div className={styles.container}>
+          <p className={styles.subtitle}>{t('overview.faqs.subtitle')}</p>
+          <h2 className={cx(overview.sectionTitle, styles.title)}>{t('overview.faqs.title')}</h2>
           {faqIds.map(id => (
             <FaqRow key={id} id={id} open={openId === id} onToggle={() => setOpenId(openId === id ? null : id)} />
           ))}
-          <S.Cta>
+          <div className={styles.cta}>
             <Button
               as="a"
               variant="ghost"
@@ -95,10 +111,10 @@ const Faqs = () => {
             >
               {t('overview.faqs.cta')}
             </Button>
-          </S.Cta>
-        </S.Container>
-      </S.Frame>
-    </S.Section>
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 

@@ -7,6 +7,7 @@ import {
   ItemSyncStatus,
   buildResetItem,
   getItemRowStatus,
+  hasUpdatesSinceRejection,
   showsItemStatusColumn,
   getItemSyncStatus,
   isItemSynced,
@@ -115,6 +116,18 @@ describe('isItemSynced', () => {
     expect(isItemSynced(untagged, entity)).toBe(false)
     expect(isItemSynced(retagged, entity, { ignoreTags: true })).toBe(true)
     expect(isItemSynced(untagged, entity, { ignoreTags: true })).toBe(true)
+  })
+
+  it('is out of sync when the metrics were corrected, unless asked to ignore them', () => {
+    const zeroed = {
+      ...wearable,
+      metrics: { triangles: 0, materials: 0, textures: 0, meshes: 1, bodies: 1, entities: 1 }
+    }
+    const entity = entityFor(zeroed, { metrics: zeroed.metrics })
+    const repaired = { ...zeroed, metrics: { ...zeroed.metrics, triangles: 540, materials: 1, textures: 1 } }
+    expect(isItemSynced(zeroed, entity)).toBe(true)
+    expect(isItemSynced(repaired, entity)).toBe(false)
+    expect(isItemSynced(repaired, entity, { ignoreMetrics: true })).toBe(true)
   })
 
   it('does not confuse a tag containing a comma with two tags', () => {
@@ -352,5 +365,19 @@ describe('buildResetItem', () => {
   it('takes the ADR-74 data for an emote', () => {
     const reset = buildResetItem({ ...emote, data: { ...emote.data, loop: false } }, entityFor(emote))
     expect(reset.data.loop).toBe(true)
+  })
+})
+
+describe('hasUpdatesSinceRejection', () => {
+  const rejected = { status: 'rejected' as const, updatedAt: 100 }
+
+  it('finds an update once an item was saved or added after the request was sent back', () => {
+    expect(hasUpdatesSinceRejection(rejected, [{ updatedAt: 50 }, { updatedAt: 150 }])).toBe(true)
+    expect(hasUpdatesSinceRejection(rejected, [{ updatedAt: 50 }, { updatedAt: 100 }])).toBe(false)
+  })
+
+  it('finds none on a request that was not sent back', () => {
+    expect(hasUpdatesSinceRejection({ status: 'pending', updatedAt: 100 }, [{ updatedAt: 150 }])).toBe(false)
+    expect(hasUpdatesSinceRejection(null, [{ updatedAt: 150 }])).toBe(false)
   })
 })

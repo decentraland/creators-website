@@ -4,7 +4,7 @@ import { useAllCollectionItems, useSaveCollection } from '~/hooks/useCollection'
 import { useProfile } from '~/hooks/useProfile'
 import { track } from '~/lib/analytics'
 import { type Session } from '~/lib/auth'
-import { type Collection } from '~/lib/collections'
+import { isCollectionLocked, type Collection } from '~/lib/collections'
 import { type TopUpResume } from '~/lib/creditsTopUp'
 import { type PaymentMethod, type PublishCollectionError, type PublishResult } from '~/lib/publishCollection'
 import { Modal } from '~/components/Modal'
@@ -14,9 +14,10 @@ import { PaymentStep } from './PaymentStep'
 import { PublishErrorModal } from './PublishErrorModal'
 import { TopUpOutcome } from './TopUpOutcome'
 import { ValidationGate } from './ValidationGate'
-import { type ItemCheck } from './ValidationIssuesView'
+import { type ItemCheck } from '~/lib/validation'
 import { StepIndicator } from '~/components/StepIndicator'
-import * as S from './PublishCollectionModal.styles'
+import styles from './PublishCollectionModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 enum Step {
   Name = 1,
@@ -127,6 +128,8 @@ export function PublishCollectionModal({
   }
 
   const busy = saveCollection.isPending || isStepBusy
+  // builder-server refuses every save while the publish lock holds, so a retry can only confirm what was sent.
+  const readOnly = isCollectionLocked(collection)
 
   return (
     <Modal
@@ -136,33 +139,35 @@ export function PublishCollectionModal({
       closeDisabled={busy}
       testId="publish-collection-modal"
     >
-      <S.Main>
+      <div className={styles.main}>
         <StepIndicator current={step} total={TOTAL_STEPS} testId="publish-steps" />
         {step === Step.Name &&
           (profile.isLoading ? (
-            <S.InlineNote data-testid="publish-name-loading">
-              <S.Spinner aria-hidden />
-            </S.InlineNote>
+            <p className={styles.inlineNote} data-testid="publish-name-loading">
+              <span className={shared.spinner} aria-hidden />
+            </p>
           ) : (
             <ConfirmNameStep
               initialName={collection.name}
               initialEmail={email || profileEmail}
               isSaving={saveCollection.isPending}
               saveError={saveCollection.error?.message ?? null}
+              nameDisabled={readOnly}
               onCancel={onClose}
               onConfirm={confirmDetails}
             />
           ))}
         {step === Step.Items &&
           (itemsQuery.isLoading ? (
-            <S.InlineNote data-testid="publish-items-loading">
-              <S.Spinner aria-hidden />
-            </S.InlineNote>
+            <p className={styles.inlineNote} data-testid="publish-items-loading">
+              <span className={shared.spinner} aria-hidden />
+            </p>
           ) : (
             <ConfirmItemsStep
               address={address}
               collection={collection}
               items={items}
+              readOnly={readOnly}
               onBusyChange={setStepBusy}
               onBack={() => setStep(Step.Name)}
               onConfirm={() => setStep(Step.Payment)}
@@ -184,7 +189,7 @@ export function PublishCollectionModal({
             onFailed={setError}
           />
         )}
-      </S.Main>
+      </div>
       {settlingOrder && <TopUpOutcome address={address} orderId={settlingOrder} onDone={settleOrder} />}
     </Modal>
   )

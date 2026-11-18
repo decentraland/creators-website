@@ -1,23 +1,26 @@
 import { useMemo, type ReactNode } from 'react'
-import {
-  CameraAlt as CameraIcon,
-  ChangeHistory as TriangleIcon,
-  Circle as MaterialIcon,
-  ReportProblemOutlined as WarningIcon,
-  SentimentSatisfiedAlt as SmileIcon,
-  Texture as TextureIcon,
-  ThirtyFpsSelect as FpsIcon
-} from '@mui/icons-material'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
-import { ClockIcon, FilmReelIcon, ImageIcon } from '~/components/Icons'
+import {
+  ClockIcon,
+  FilmReelIcon,
+  ImageIcon,
+  CameraAltIcon as CameraIcon,
+  ChangeHistoryIcon as TriangleIcon,
+  CircleIcon as MaterialIcon,
+  ReportProblemOutlinedIcon as WarningIcon,
+  SentimentSatisfiedAltIcon as SmileIcon,
+  TextureIcon,
+  ThirtyFpsSelectIcon as FpsIcon
+} from '~/components/Icons'
 import { RequiredPermissions } from '~/components/RequiredPermissions'
 import { Tooltip } from '~/components/Tooltip'
 import { useThumbnailValidation } from '~/hooks/useThumbnailValidation'
 import { useTranslation } from '~/intl'
 import { THUMBNAIL_PATH, hasFacialExpressions } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
-import { type PreviewDraft } from '~/lib/draftPreview'
-import * as S from './ItemDraftModal.styles'
+import { isThumbnailGenerating, type PreviewDraft } from '~/lib/draftPreview'
+import { cx } from '~/lib/cx'
+import styles from './ItemDraftModal.module.css'
 
 type Props = {
   draft: PreviewDraft
@@ -34,6 +37,7 @@ export function DraftPreviewPane({ draft, thumbnailLocked = false, onOpenThumbna
   const isEmote = draft.type === ItemType.EMOTE
   const isWearable = draft.type === ItemType.WEARABLE
   const isSmart = isWearable && draft.isSmart
+  const isGenerating = isThumbnailGenerating(draft)
 
   const thumbnailBlob = draft.contents[THUMBNAIL_PATH]
   const thumbnailSource = useMemo(
@@ -51,87 +55,103 @@ export function DraftPreviewPane({ draft, thumbnailLocked = false, onOpenThumbna
   )
 
   return (
-    <S.PreviewPane data-testid="draft-preview-pane">
-      <S.ThumbnailWrap>
+    <div className={styles.previewPane} data-testid="draft-preview-pane">
+      <div className={styles.thumbnailWrap}>
         {thumbnailLocked ? (
-          <S.ThumbnailBox as="div">
-            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail" />
-          </S.ThumbnailBox>
+          <div className={styles.thumbnailBox}>
+            <ItemThumbnail
+              src={draft.thumbnail}
+              rarity={draft.rarity}
+              testId="draft-thumbnail"
+              loading={isGenerating}
+            />
+          </div>
         ) : (
-          <S.ThumbnailBox
+          <button
+            className={styles.thumbnailBox}
             type="button"
             aria-label={t('add_items_modal.edit_thumbnail')}
             data-testid="edit-thumbnail"
             onClick={onOpenThumbnail}
           >
-            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail">
-              <S.ThumbnailOverlay data-thumb-overlay>
+            <ItemThumbnail src={draft.thumbnail} rarity={draft.rarity} testId="draft-thumbnail" loading={isGenerating}>
+              <span className={styles.thumbnailOverlay} data-thumb-overlay>
                 <CameraIcon />
-              </S.ThumbnailOverlay>
+              </span>
             </ItemThumbnail>
-          </S.ThumbnailBox>
+          </button>
         )}
         {isWearable && hasFacialExpressions(draft.contents) && (
           <Tooltip content={t('add_items_modal.facial_expressions')} asChild>
-            <S.ThumbnailBadge
+            <span
+              className={styles.thumbnailBadge}
               tabIndex={0}
               aria-label={t('add_items_modal.facial_expressions')}
               data-testid="facial-expressions-badge"
             >
               <SmileIcon />
-            </S.ThumbnailBadge>
+            </span>
           </Tooltip>
         )}
-      </S.ThumbnailWrap>
-      <S.MetricsRow data-testid="draft-metrics" data-compact={isEmote || undefined}>
+      </div>
+      <div
+        className={styles.metricsRow}
+        data-testid="draft-metrics"
+        data-compact={isEmote || undefined}
+        aria-busy={!draft.metrics || undefined}
+      >
         {isEmote && draft.metrics ? (
           <>
-            <S.MetricPill>
+            <span className={styles.metricPill}>
               <FilmReelIcon />
               {t('add_items_modal.metrics.sequences', { count: draft.metrics.sequences ?? 0 })}
-            </S.MetricPill>
-            <S.MetricPill>
+            </span>
+            <span className={styles.metricPill}>
               <ClockIcon />
               {t('add_items_modal.metrics.duration', { count: Math.round((draft.metrics.duration ?? 0) * 10) / 10 })}
-            </S.MetricPill>
-            <S.MetricPill>
+            </span>
+            <span className={styles.metricPill}>
               <ImageIcon />
               {t('add_items_modal.metrics.frames', { count: draft.metrics.frames ?? 0 })}
-            </S.MetricPill>
-            <S.MetricPill>
+            </span>
+            <span className={styles.metricPill}>
               <FpsIcon />
               {t('add_items_modal.metrics.fps', { count: Math.round((draft.metrics.fps ?? 0) * 10) / 10 })}
-            </S.MetricPill>
+            </span>
           </>
         ) : draft.metrics ? (
           <>
-            <S.MetricPill>
+            <span className={styles.metricPill}>
               <TriangleIcon />
               {t('add_items_modal.metrics.triangles', { count: draft.metrics.triangles ?? 0 })}
-            </S.MetricPill>
-            <S.MetricPill>
+            </span>
+            <span className={styles.metricPill}>
               <MaterialIcon />
               {t('add_items_modal.metrics.materials', { count: draft.metrics.materials ?? 0 })}
-            </S.MetricPill>
-            <S.MetricPill>
+            </span>
+            <span className={styles.metricPill}>
               <TextureIcon />
               {t('add_items_modal.metrics.textures', { count: draft.metrics.textures ?? 0 })}
-            </S.MetricPill>
+            </span>
           </>
-        ) : null}
-      </S.MetricsRow>
+        ) : (
+          [0, 1, 2].map(i => (
+            <span className={cx(styles.metricSkeleton, 'skeleton')} key={i} data-testid="draft-metrics-loading" />
+          ))
+        )}
+      </div>
       {isSmart && <RequiredPermissions permissions={draft.requiredPermissions} testId="draft-permissions" />}
       {children}
       {warnings.length > 0 && (
-        <S.WarningsList data-testid="draft-warnings">
+        <div className={styles.warningsList} data-testid="draft-warnings">
           {warnings.map(warning => (
-            <S.WarningCard key={warning.key}>
+            <div className={styles.warningCard} key={warning.key}>
               <WarningIcon />
               {warning.text}
-            </S.WarningCard>
+            </div>
           ))}
-        </S.WarningsList>
+        </div>
       )}
-    </S.PreviewPane>
+    </div>
   )
 }

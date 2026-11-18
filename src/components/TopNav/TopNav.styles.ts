@@ -1,5 +1,5 @@
 import styled from '@emotion/styled'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 
 // Holds the space of the lazy-loaded global DCL navbar (same height) so there's no layout shift; the
 // fill matches the restyled navbar bar (see NavbarViolet below) so it doesn't flash when it hydrates.
@@ -50,12 +50,12 @@ export const NavbarViolet = styled.div`
   }
   & nav > div:first-of-type > div > a:hover,
   & nav > div:first-of-type > div > div > button:hover {
-    color: ${theme.colors.white};
+    color: var(--color-white);
     background-color: rgba(255, 255, 255, 0.12);
   }
   & nav > div:first-of-type > div > a.active,
   & nav > div:first-of-type > div > div > button.active {
-    color: ${theme.colors.white};
+    color: var(--color-white);
     background-color: rgba(255, 255, 255, 0.18);
   }
 
@@ -70,10 +70,10 @@ export const NavbarViolet = styled.div`
   /* Signed-in right cluster: force the cluster's buttons and any svg glyph to white so they read on
      the dark bar. The profile pic is an <img>, so it isn't affected by color/fill. */
   & nav > div:last-of-type button {
-    color: ${theme.colors.softWhite};
+    color: var(--color-soft-white);
   }
   & nav > div:last-of-type svg {
-    color: ${theme.colors.softWhite};
+    color: var(--color-soft-white);
   }
   /* Only paths that are FILLED shapes — glyphs that draw strokes over fill="none" must keep them. The
      profile panel (the avatar button's sibling card on desktop, ui2's data-mobile-user-card on mobile)
@@ -89,37 +89,37 @@ export const NavbarViolet = styled.div`
   /* Sign-in button (signed-out state): light outline + text on the dark bar. The hamburger is
      excluded via :not([aria-label]). */
   & nav > div:last-of-type > button:not([aria-label]) {
-    color: ${theme.colors.softWhite};
-    border-color: ${theme.colors.softWhite};
+    color: var(--color-soft-white);
+    border-color: var(--color-soft-white);
   }
   & nav > div:last-of-type > button:not([aria-label]):hover {
     background-color: rgba(255, 255, 255, 0.12);
-    border-color: ${theme.colors.softWhite};
+    border-color: var(--color-soft-white);
   }
   & nav > div:last-of-type > button:not([aria-label]):active {
     background-color: rgba(255, 255, 255, 0.18);
-    border-color: ${theme.colors.softWhite};
+    border-color: var(--color-soft-white);
   }
 
   /* Mobile hamburger / menu button: solid purple with a white icon — ui2's default is a faint
      white-on-dark chip. The icon uses currentColor, so the color prop drives it. */
   & nav button[aria-label='Open menu'],
   & nav button[aria-label='Close menu'] {
-    background-color: ${theme.colors.accent};
-    color: ${theme.colors.white};
+    background-color: var(--color-accent);
+    color: var(--color-white);
   }
   & nav button[aria-label='Open menu']:hover,
   & nav button[aria-label='Close menu']:hover {
-    background-color: ${theme.colors.accentHover};
+    background-color: var(--color-accent-hover);
   }
   & nav button[aria-label='Open menu']:active,
   & nav button[aria-label='Close menu']:active {
-    background-color: ${theme.colors.accentActive};
+    background-color: var(--color-accent-active);
   }
 
   /* Mobile bar. ui2 already gives it 64px at 12/16 padding, so only the fill, the spacing of the
      right cluster and the menu chip differ. */
-  ${theme.media.maxWidth('mobile')} {
+  ${media.maxWidth('mobile')} {
     & nav::before {
       background: rgba(22, 21, 24, 0.75);
     }
@@ -139,7 +139,7 @@ export const NavbarViolet = styled.div`
       height: 40px;
       border-radius: 8px;
       background-color: rgba(255, 255, 255, 0.1);
-      color: ${theme.colors.white};
+      color: var(--color-white);
     }
     & nav button[aria-label='Open menu']:hover,
     & nav button[aria-label='Close menu']:hover,

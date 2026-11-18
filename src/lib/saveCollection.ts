@@ -2,7 +2,7 @@
 // legacy builder's save-collection saga: the placeholder URN, the ERC721CollectionV2.initialize
 // calldata (builder-server derives the CREATE2 salt + contract address from it and rejects a save
 // without it), and the symbol/items encodings that feed it.
-import { ethers } from 'ethers'
+import { encodeFunctionData, zeroAddress } from 'viem'
 import { config } from '~/config'
 import { type Collection } from './collections'
 import { getItemMetadata, type Item } from './items'
@@ -46,7 +46,7 @@ export function getCollectionSymbol(name: string): string {
 
 /** Placeholder URN for an unpublished collection; the real address is derived server-side. */
 export function buildDefaultCatalystCollectionURN(): string {
-  return `urn:decentraland:${config.get('MATIC_URN_PROTOCOL')}:collections-v2:${ethers.constants.AddressZero}`
+  return `urn:decentraland:${config.get('MATIC_URN_PROTOCOL')}:collections-v2:${zeroAddress}`
 }
 
 /** A brand-new draft collection, exactly as the legacy CreateCollectionModal builds it. */
@@ -73,22 +73,25 @@ export function toInitializeItems(items: Item[]): InitializeItem[] {
     .map(item => [
       (item.rarity ?? '').toLowerCase(),
       item.price || '0',
-      item.beneficiary ?? ethers.constants.AddressZero,
+      item.beneficiary ?? zeroAddress,
       getItemMetadata(item)
     ])
 }
 
 /** The ABI-encoded initialize calldata for a standard collection save. `from` is the signer. */
 export function buildCollectionInitializeData(collection: Collection, items: Item[], from: string): string {
-  const contractInterface = new ethers.utils.Interface(INITIALIZE_ABI)
-  return contractInterface.encodeFunctionData('initialize', [
-    collection.name,
-    getCollectionSymbol(collection.name),
-    config.get('ERC721_COLLECTION_BASE_URI'),
-    from,
-    true, // should complete
-    false, // is approved
-    config.get('RARITIES_WITH_ORACLE_ADDRESS'),
-    toInitializeItems(items)
-  ])
+  return encodeFunctionData({
+    abi: INITIALIZE_ABI,
+    functionName: 'initialize',
+    args: [
+      collection.name,
+      getCollectionSymbol(collection.name),
+      config.get('ERC721_COLLECTION_BASE_URI'),
+      from,
+      true, // should complete
+      false, // is approved
+      config.get('RARITIES_WITH_ORACLE_ADDRESS'),
+      toInitializeItems(items)
+    ]
+  })
 }

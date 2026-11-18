@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft as ChevronLeftIcon } from '@mui/icons-material'
+import { ChevronLeftIcon } from '~/components/Icons'
 import { useIntl } from 'react-intl'
 import { config } from '~/config'
 import { useTranslation } from '~/intl'
@@ -27,6 +27,7 @@ import {
   toPublishError,
   type PaymentMethod,
   type PublishCollectionError,
+  type PublishFailureReason,
   type PublishResult
 } from '~/lib/publishCollection'
 import { formatCredits, formatMana, getPublicationFee } from '~/lib/publishFee'
@@ -37,8 +38,9 @@ import { ThumbnailMosaic } from '~/components/ThumbnailMosaic'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
 import { BuyCreditsModal } from './BuyCreditsModal'
 import { PaymentMethodCard } from './PaymentMethodCard'
-import { Methods } from './PaymentMethodCard.styles'
-import * as S from './PublishCollectionModal.styles'
+import publishModal from './PublishCollectionModal.module.css'
+import shared from '~/styles/shared.module.css'
+import method from './PaymentMethodCard.module.css'
 
 const SUMMARY_COLUMNS = 'minmax(0, 2fr) 1fr 1fr 1fr'
 // Anchors keep their href for a11y; navigation goes through the host-facing helper.
@@ -98,7 +100,7 @@ export function PaymentStep({
   const publish = usePublishCollection(session)
 
   const [status, setStatus] = useState<Status>('idle')
-  const [approveFailed, setApproveFailed] = useState(false)
+  const [approveFailure, setApproveFailure] = useState<PublishFailureReason | null>(null)
   const [isBuyingCredits, setBuyingCredits] = useState(false)
   const isSubmitting = status !== 'idle'
 
@@ -124,7 +126,7 @@ export function PaymentStep({
 
   async function handleSubmit() {
     if (!fee || !paymentMethod || !canSubmit) return
-    setApproveFailed(false)
+    setApproveFailure(null)
     // The quote is builder-server's word; the contract's own price decides whether a wallet prompt is warranted.
     setStatus('checking')
     let onChainTotal: bigint
@@ -147,7 +149,8 @@ export function PaymentStep({
         await approve.mutateAsync(approval)
       } catch (error) {
         setStatus('idle')
-        if (toPublishError(error).reason !== 'rejected') setApproveFailed(true)
+        const { reason } = toPublishError(error)
+        if (reason !== 'rejected') setApproveFailure(reason)
         return
       }
     }
@@ -204,22 +207,23 @@ export function PaymentStep({
   )
 
   return (
-    <S.Step data-testid="publish-payment-step">
-      <S.Fields
+    <div className={publishModal.step} data-testid="publish-payment-step">
+      <div
+        className={publishModal.fields}
         data-busy={isSubmitting || undefined}
         aria-busy={isSubmitting || undefined}
         {...(isSubmitting ? { inert: '' } : {})}
       >
         <div>
-          <S.Heading>{t('publish_collection_modal.payment_step.title')}</S.Heading>
-          <S.Text>
+          <h3 className={publishModal.heading}>{t('publish_collection_modal.payment_step.title')}</h3>
+          <p className={publishModal.text}>
             {intl.formatMessage(
               { id: 'publish_collection_modal.payment_step.description' },
               {
                 count: items.length,
                 name: collection.name,
                 fee: chunks => (
-                  <S.FeeTerm>
+                  <span className={publishModal.feeTerm}>
                     {chunks}
                     <InfoTooltip
                       content={
@@ -231,54 +235,58 @@ export function PaymentStep({
                       }
                       testId="publish-fee-tooltip"
                     />
-                  </S.FeeTerm>
+                  </span>
                 )
               }
             )}
-          </S.Text>
+          </p>
         </div>
 
-        <S.SummaryTable>
-          <S.TableHeader style={{ gridTemplateColumns: SUMMARY_COLUMNS }}>
+        <div className={publishModal.summaryTable}>
+          <div className={publishModal.tableHeader} style={{ gridTemplateColumns: SUMMARY_COLUMNS }}>
             <span>{t('publish_collection_modal.payment_step.columns.collection')}</span>
             <span>{t('publish_collection_modal.payment_step.columns.items')}</span>
             <span>{t('publish_collection_modal.payment_step.columns.fee_per_item')}</span>
             <span>{t('publish_collection_modal.payment_step.columns.total_fee')}</span>
-          </S.TableHeader>
-          <S.SummaryRow style={{ gridTemplateColumns: SUMMARY_COLUMNS }} data-testid="publish-summary">
-            <S.SummaryName>
-              <S.MosaicFrame aria-hidden>
+          </div>
+          <div
+            className={publishModal.summaryRow}
+            style={{ gridTemplateColumns: SUMMARY_COLUMNS }}
+            data-testid="publish-summary"
+          >
+            <div className={publishModal.summaryName}>
+              <span className={publishModal.mosaicFrame} aria-hidden>
                 <ThumbnailMosaic thumbnails={thumbnails} testId="publish-summary-mosaic" />
-              </S.MosaicFrame>
+              </span>
               <span title={collection.name}>{collection.name}</span>
-            </S.SummaryName>
+            </div>
             <span data-testid="publish-summary-items">
               {t('publish_collection_modal.payment_step.items_count', { count: items.length })}
             </span>
             <span data-testid="publish-summary-fee-per-item">
               {fee ? <CurrencyAmount currency="credits">{formatCredits(fee.perItem.credits)}</CurrencyAmount> : '—'}
             </span>
-            <S.SummaryTotal data-testid="publish-summary-total">
+            <span className={publishModal.summaryTotal} data-testid="publish-summary-total">
               {fee ? <CurrencyAmount currency="credits">{formatCredits(fee.total.credits)}</CurrencyAmount> : '—'}
-            </S.SummaryTotal>
-          </S.SummaryRow>
-        </S.SummaryTable>
+            </span>
+          </div>
+        </div>
 
-        <S.PaymentMethods>
-          <S.Lead as="h4">{t('publish_collection_modal.payment_step.payment_method')}</S.Lead>
+        <div className={publishModal.paymentMethods}>
+          <h4 className={publishModal.lead}>{t('publish_collection_modal.payment_step.payment_method')}</h4>
           {rarities.isError ? (
-            <S.InlineNote data-testid="publish-fee-error">
+            <p className={publishModal.inlineNote} data-testid="publish-fee-error">
               {t('publish_collection_modal.payment_step.fee_error')}
               <Button type="button" variant="secondary" size="sm" onClick={() => void rarities.refetch()}>
                 {t('publish_collection_modal.payment_step.retry')}
               </Button>
-            </S.InlineNote>
+            </p>
           ) : !fee || creditsFlag.isLoading ? (
-            <S.InlineNote data-testid="publish-fee-loading">
-              <S.Spinner aria-hidden />
-            </S.InlineNote>
+            <p className={publishModal.inlineNote} data-testid="publish-fee-loading">
+              <span className={shared.spinner} aria-hidden />
+            </p>
           ) : (
-            <Methods data-testid="payment-methods" data-disabled={isSubmitting || undefined}>
+            <div className={method.methods} data-testid="payment-methods" data-disabled={isSubmitting || undefined}>
               {methods.map(method => (
                 <PaymentMethodCard
                   key={method}
@@ -302,14 +310,18 @@ export function PaymentStep({
                   onSelect={() => onPaymentMethodChange(method)}
                 />
               ))}
-            </Methods>
+            </div>
           )}
-          {approveFailed && (
-            <S.ErrorText data-testid="publish-approve-error">
-              {t('publish_collection_modal.payment_step.approve_error')}
-            </S.ErrorText>
+          {approveFailure && (
+            <p className={publishModal.errorText} data-testid="publish-approve-error">
+              {t(
+                approveFailure === 'wallet'
+                  ? 'wallet_error.wrong_account'
+                  : 'publish_collection_modal.payment_step.approve_error'
+              )}
+            </p>
           )}
-        </S.PaymentMethods>
+        </div>
 
         <Checkbox checked={accepted} disabled={isSubmitting} onChange={onAcceptedChange} testId="publish-terms-accept">
           {intl.formatMessage(
@@ -328,8 +340,8 @@ export function PaymentStep({
             }
           )}
         </Checkbox>
-      </S.Fields>
-      <S.Footer>
+      </div>
+      <div className={publishModal.footer}>
         <Button type="button" variant="secondary" disabled={isSubmitting} data-testid="publish-back" onClick={onBack}>
           <ChevronLeftIcon fontSize="small" />
           {t('publish_collection_modal.back')}
@@ -343,7 +355,7 @@ export function PaymentStep({
         >
           {t('publish_collection_modal.payment_step.submit')}
         </Button>
-      </S.Footer>
+      </div>
       {isBuyingCredits && (
         <BuyCreditsModal
           balance={balances.credits}
@@ -352,6 +364,6 @@ export function PaymentStep({
           onBuy={buyCredits}
         />
       )}
-    </S.Step>
+    </div>
   )
 }

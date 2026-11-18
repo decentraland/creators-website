@@ -43,6 +43,12 @@ describe('pickPreviewDraft', () => {
     expect(pickPreviewDraft(drafts, drafts[1].id, drafts[1].id)).toBe(drafts[0])
   })
 
+  it('finishes the type the preview was last mounted for before rebooting it for the other', () => {
+    const finishedEmote = draft({ type: ItemType.EMOTE, ...done })
+    const drafts = [draft(), finishedEmote, draft(), draft({ type: ItemType.EMOTE })]
+    expect(pickPreviewDraft(drafts, finishedEmote.id, finishedEmote.id)).toBe(drafts[3])
+  })
+
   it('skips drafts still being analyzed and returns null when everything is done', () => {
     const drafts = [draft({ status: 'processing', type: null }), draft(done)]
     expect(pickPreviewDraft(drafts, drafts[0].id, null)).toBeNull()

@@ -1,4 +1,4 @@
-import { Check as CheckIcon } from '@mui/icons-material'
+import { CheckIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { Button } from '~/components/Button'
 import { CurrencyAmount } from '~/components/CurrencyAmount'
@@ -7,7 +7,7 @@ import { type PaymentMethod } from '~/lib/publishCollection'
 import creditsMark from '~/assets/payment/credits-logo.webp'
 import manaMark from '~/assets/payment/mana-logo.webp'
 import { CheckboxBox } from '~/components/Checkbox'
-import * as S from './PaymentMethodCard.styles'
+import styles from './PaymentMethodCard.module.css'
 
 const MARKS: Record<PaymentMethod, string> = { credits: creditsMark, mana: manaMark }
 
@@ -50,7 +50,8 @@ export function PaymentMethodCard({
   const isSelected = selected && hasEnough
 
   return (
-    <S.Card
+    <label
+      className={styles.card}
       data-testid={`payment-method-${method}`}
       data-method={method}
       data-selected={isSelected || undefined}
@@ -70,22 +71,26 @@ export function PaymentMethodCard({
           <CheckIcon />
         </CheckboxBox>
       )}
-      <S.Mark src={MARKS[method]} alt="" />
-      <S.Info>
-        <S.Title>{t(`publish_collection_modal.payment_step.${method}`)}</S.Title>
-        <S.Balance data-insufficient={hasEnough ? undefined : true} data-testid={`payment-method-${method}-balance`}>
+      <img className={styles.mark} src={MARKS[method]} alt="" />
+      <span className={styles.info}>
+        <span className={styles.title}>{t(`publish_collection_modal.payment_step.${method}`)}</span>
+        <span
+          className={styles.balance}
+          data-insufficient={hasEnough ? undefined : true}
+          data-testid={`payment-method-${method}-balance`}
+        >
           {t(`publish_collection_modal.payment_step.${method}_balance`)}
           <span>
             <CurrencyAmount currency={method}>{balance}</CurrencyAmount>
           </span>
-        </S.Balance>
-      </S.Info>
-      <S.Price>
-        <S.Amount data-testid={`payment-method-${method}-price`}>
+        </span>
+      </span>
+      <span className={styles.price}>
+        <span className={styles.amount} data-testid={`payment-method-${method}-price`}>
           <CurrencyAmount currency={method}>{price}</CurrencyAmount>
-        </S.Amount>
-        {note && <S.Rate>{note}</S.Rate>}
-      </S.Price>
+        </span>
+        {note && <span className={styles.rate}>{note}</span>}
+      </span>
       {!hasEnough && (
         <Button
           {...(onGetMore ? { type: 'button' as const } : { as: 'a' as const, href: getMoreUrl })}
@@ -108,6 +113,6 @@ export function PaymentMethodCard({
           </CurrencyAmount>
         </Button>
       )}
-    </S.Card>
+    </label>
   )
 }

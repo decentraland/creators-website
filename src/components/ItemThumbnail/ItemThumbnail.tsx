@@ -1,6 +1,8 @@
 import { type ReactNode } from 'react'
+import { useTranslation } from '~/intl'
+import { cx } from '~/lib/cx'
 import { getRarityMediaBackground } from '~/lib/rarities'
-import * as S from './ItemThumbnail.styles'
+import styles from './ItemThumbnail.module.css'
 
 type Props = {
   src?: string | null
@@ -9,15 +11,31 @@ type Props = {
   children?: ReactNode
   className?: string
   testId?: string
+  /** Shows a spinner over the frame while the artwork is still being generated. */
+  loading?: boolean
+}
+
+function LoadingSpinner({ testId }: { testId: string }) {
+  const { t } = useTranslation()
+  return (
+    <span className={styles.spinner} role="status" aria-label={t('item_thumbnail.generating')} data-testid={testId} />
+  )
 }
 
 /** An item's artwork over its rarity-tinted media field; neutral when the rarity is unknown or missing. */
-export function ItemThumbnail({ src, rarity, children, className, testId = 'item-thumbnail' }: Props) {
+export function ItemThumbnail({ src, rarity, children, className, testId = 'item-thumbnail', loading = false }: Props) {
   const backgroundImage = getRarityMediaBackground(rarity)
   return (
-    <S.Frame className={className} data-testid={testId} style={backgroundImage ? { backgroundImage } : undefined}>
-      {src && <S.Img src={src} alt="" loading="lazy" data-testid={`${testId}-img`} />}
+    <span
+      className={cx(styles.frame, className)}
+      data-testid={testId}
+      data-loading={loading || undefined}
+      aria-busy={loading || undefined}
+      style={backgroundImage ? { backgroundImage } : undefined}
+    >
+      {src && <img className={styles.img} src={src} alt="" loading="lazy" data-testid={`${testId}-img`} />}
+      {loading && <LoadingSpinner testId={`${testId}-loading`} />}
       {children}
-    </S.Frame>
+    </span>
   )
 }

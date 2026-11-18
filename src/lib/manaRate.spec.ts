@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ethers } from 'ethers'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { fetchManaUsdRate, type ReadContract } from './manaRate'
 
 const CHAIN_ID = 80002
@@ -11,12 +10,14 @@ function makeRead(
   round: Partial<Record<'roundId' | 'answer' | 'updatedAt' | 'answeredInRound', number>>,
   decimals = 8
 ) {
-  const data = {
-    roundId: ethers.BigNumber.from(round.roundId ?? 10),
-    answer: ethers.BigNumber.from(round.answer ?? 30_000_000),
-    updatedAt: ethers.BigNumber.from(round.updatedAt ?? NOW / 1000 - 60),
-    answeredInRound: ethers.BigNumber.from(round.answeredInRound ?? 10)
-  }
+  // roundId, answer, startedAt, updatedAt, answeredInRound
+  const data = [
+    BigInt(round.roundId ?? 10),
+    BigInt(round.answer ?? 30_000_000),
+    0n,
+    BigInt(round.updatedAt ?? NOW / 1000 - 60),
+    BigInt(round.answeredInRound ?? 10)
+  ]
   return vi.fn(async (contract, method) => {
     if (method === 'manaUsdAggregator') return AGGREGATOR
     if (method === 'decimals') return decimals

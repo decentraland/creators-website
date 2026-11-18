@@ -1,26 +1,18 @@
+import { StrictMode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import type { PrelaunchDecision } from '~/hooks/useCreatorsPrelaunch'
-
-const gate = vi.hoisted((): { decision: PrelaunchDecision } => ({ decision: 'open' }))
-vi.mock('~/hooks/useCreatorsPrelaunch', () => ({ useCreatorsPrelaunch: () => gate.decision }))
 vi.mock('~/hooks/useFeatureFlag', () => ({ useFeatureFlag: () => ({ enabled: false, isLoading: false }) }))
 vi.mock('~/hooks/useAccountWatcher', () => ({ useAccountWatcher: () => undefined }))
 vi.mock('~/store/wallet', () => ({
   useWallet: (selector: (s: { restore: () => Promise<void> }) => unknown) =>
     selector({ restore: () => Promise.resolve() })
 }))
-vi.mock('~/components/NavBar', () => ({
-  NavBar: ({ subnav }: { subnav?: boolean }) => <div data-testid="navbar" data-subnav={String(subnav)} />
-}))
+vi.mock('~/components/NavBar', () => ({ NavBar: () => <div data-testid="navbar" /> }))
 vi.mock('~/components/Footer', () => ({ Footer: () => <footer data-testid="footer" /> }))
 vi.mock('~/components/Intercom', () => ({ Intercom: () => null }))
 vi.mock('~/components/Toasts', () => ({ Toasts: () => null }))
-vi.mock('~/components/OverviewPage', async () => {
-  const { useLocation } = await import('react-router-dom')
-  return { OverviewPage: () => <div data-testid="overview" data-search={useLocation().search} /> }
-})
+vi.mock('~/components/OverviewPage', () => ({ OverviewPage: () => <div data-testid="overview" /> }))
 vi.mock('~/components/CollectionsPage', () => ({ CollectionsPage: () => <div data-testid="collections" /> }))
 vi.mock('~/components/ItemEditorPage', () => ({ ItemEditorPage: () => <div data-testid="editor" /> }))
 vi.mock('~/lib/analytics', () => ({ track: vi.fn() }))
@@ -38,99 +30,50 @@ function renderApp(path: string) {
 }
 
 beforeEach(() => {
-  gate.decision = 'open'
   trackPageView.mockReset()
 })
 
-describe('App behind the pre-launch gate', () => {
-  it('serves the overview with the top bar only and sends every other route back to it', async () => {
-    gate.decision = 'hidden'
+describe('App', () => {
+  it('opens a direct link to an inner page in the shell and counts its view', async () => {
     renderApp('/collections')
-    await screen.findByTestId('overview')
-    expect(screen.getByTestId('navbar')).toHaveAttribute('data-subnav', 'false')
-    expect(document.body).toHaveAttribute('data-no-subnav')
+    await screen.findByTestId('collections')
+    expect(screen.getByTestId('navbar')).toBeInTheDocument()
+    expect(screen.getByTestId('footer')).toBeInTheDocument()
+    await waitFor(() => expect(trackPageView).toHaveBeenCalledWith('/collections'))
     expect(trackPageView).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders and counts the overview at once', () => {
+    renderApp('/')
+    expect(screen.getByTestId('overview')).toBeInTheDocument()
+    expect(screen.getByTestId('navbar')).toBeInTheDocument()
     expect(trackPageView).toHaveBeenCalledWith('/')
   })
 
-  it('keeps the query string when sending a curtained visitor to the overview', async () => {
-    gate.decision = 'hidden'
-    renderApp('/collections?utm_source=newsletter')
-    expect(await screen.findByTestId('overview')).toHaveAttribute('data-search', '?utm_source=newsletter')
-  })
-
-  it('keeps the not-found page for unknown routes, and for the live preview with its flag off, once open', async () => {
+  it('shows the not-found page for unknown routes, and for the live preview with its flag off', async () => {
     renderApp('/nope')
     expect(await screen.findByTestId('not-found-page')).toBeInTheDocument()
-    expect(screen.getByTestId('navbar')).toHaveAttribute('data-subnav', 'true')
 
     renderApp('/live-preview')
     await waitFor(() => expect(screen.getAllByTestId('not-found-page')).toHaveLength(2))
   })
 
-  it('still counts the overview view for a curtained visitor', () => {
-    gate.decision = 'hidden'
-    renderApp('/')
-    expect(screen.getByTestId('overview')).toBeInTheDocument()
-    expect(trackPageView).toHaveBeenCalledTimes(1)
-    expect(trackPageView).toHaveBeenCalledWith('/')
-  })
-
-  it('renders and counts the overview at once while the gate is still undecided', () => {
-    gate.decision = 'pending'
-    renderApp('/')
-    expect(screen.getByTestId('overview')).toBeInTheDocument()
-    expect(trackPageView).toHaveBeenCalledWith('/')
-  })
-
-  it('withholds other routes and their views while the gate is undecided, then opens up', async () => {
-    gate.decision = 'pending'
-    const { rerender } = renderApp('/collections')
-    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull()
-    expect(screen.queryByTestId('collections')).toBeNull()
-    expect(trackPageView).not.toHaveBeenCalled()
-
-    gate.decision = 'open'
-    rerender(
-      <MemoryRouter initialEntries={['/collections']}>
-        <App />
-      </MemoryRouter>
-    )
-    await screen.findByTestId('collections')
-    expect(screen.getByTestId('navbar')).toHaveAttribute('data-subnav', 'true')
-    expect(document.body).not.toHaveAttribute('data-no-subnav')
-    await waitFor(() => expect(trackPageView).toHaveBeenCalledWith('/collections'))
-    expect(trackPageView).toHaveBeenCalledTimes(1)
-  })
-
-  it('keeps a fullscreen workspace in the shell until the gate opens it', async () => {
-    gate.decision = 'pending'
-    const { rerender } = renderApp('/collections/editor')
-    expect(screen.getByTestId('navbar')).toBeInTheDocument()
-    expect(document.body).not.toHaveAttribute('data-fullscreen')
-
-    gate.decision = 'open'
-    rerender(
-      <MemoryRouter initialEntries={['/collections/editor']}>
-        <App />
-      </MemoryRouter>
-    )
+  it('opens the item editor as a fullscreen workspace without the shell', async () => {
+    renderApp('/collections/editor')
     await screen.findByTestId('editor')
     expect(screen.queryByTestId('navbar')).toBeNull()
+    expect(screen.queryByTestId('footer')).toBeNull()
     expect(document.body).toHaveAttribute('data-fullscreen')
   })
 
-  it('counts a page once even when the gate re-decides on it, as on sign-out', () => {
-    const { rerender } = renderApp('/')
-    expect(trackPageView).toHaveBeenCalledTimes(1)
-
-    gate.decision = 'hidden'
-    rerender(
-      <MemoryRouter initialEntries={['/']}>
-        <App />
-      </MemoryRouter>
+  it('counts a page once under StrictMode', () => {
+    render(
+      <StrictMode>
+        <MemoryRouter initialEntries={['/']}>
+          <App />
+        </MemoryRouter>
+      </StrictMode>
     )
-    expect(screen.getByTestId('overview')).toBeInTheDocument()
     expect(trackPageView).toHaveBeenCalledTimes(1)
   })
 })

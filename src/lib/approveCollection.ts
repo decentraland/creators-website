@@ -1,7 +1,6 @@
 // The committee's approval flow for a standard collection, ported from the legacy builder's
 // handleInitiateApprovalFlow: token ids → rescue content hashes on chain → deploy entities → approve.
 // Every step is idempotent, so running the flow again resumes where a closed or failed run stopped.
-import { hashV1 } from '@dcl/hashing'
 import { type Entity } from '@dcl/schemas'
 import { type ContractCall } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
@@ -9,29 +8,19 @@ import { RESCUE_CHUNK_SIZE, buildRescueItemsCalls, buildSetApprovedCall } from '
 import {
   buildDeploymentForm,
   buildItemEntity,
+  buildMissingImage,
   computeItemContentHash,
   getEntityContent,
-  type AuthLink
+  type AuthLink,
+  type ImageDeps,
+  type MissingImage
 } from '~/lib/catalystEntity'
 import { isItemSynced } from '~/lib/itemSync'
-import { IMAGE_PATH, ItemType, getItemMetadata, type Item } from '~/lib/items'
+import { ItemType, getItemMetadata, type Item } from '~/lib/items'
+
+export { buildMissingImage }
 
 export type RescueTarget = { item: Item; contentHash: string }
-
-/** A generated `image.png` for an item saved without one (legacy generateCatalystImage). */
-export type MissingImage = { hash: string; blob: Blob }
-
-export type ImageDeps = {
-  fetchContent: (hash: string) => Promise<Blob>
-  renderCatalystImage: (thumbnail: Blob, rarity: string) => Promise<Blob>
-}
-
-export async function buildMissingImage(item: Item, deps: ImageDeps): Promise<MissingImage | null> {
-  if (item.contents[IMAGE_PATH]) return null
-  const thumbnail = await deps.fetchContent(item.contents[item.thumbnail])
-  const blob = await deps.renderCatalystImage(thumbnail, item.rarity ?? '')
-  return { hash: await hashV1(new Uint8Array(await blob.arrayBuffer())), blob }
-}
 
 export class ApprovalError extends Error {
   reason:
@@ -170,7 +159,7 @@ export function findItemsToDeploy(items: Item[], entities: Entity[], missingOnly
 }
 
 export type DeployDeps = ImageDeps & {
-  sign: (entityId: string) => AuthLink[] | null
+  sign: (entityId: string) => Promise<AuthLink[] | null>
   fetchAvailableContent: (hashes: string[]) => Promise<Set<string>>
   deployEntity: (form: FormData) => Promise<void>
 }
@@ -179,7 +168,7 @@ async function deployItem(collection: Collection, item: Item, deps: DeployDeps):
   const image = await buildMissingImage(item, deps)
   const content = getEntityContent(item, image?.hash)
   const entity = await buildItemEntity(collection, item, content)
-  const authChain = deps.sign(entity.entityId)
+  const authChain = await deps.sign(entity.entityId)
   if (!authChain) throw new ApprovalError('no_identity', 'The session has no signing identity')
 
   const hashes = [...new Set(Object.values(content))]
@@ -227,33 +216,4 @@ export async function approveOnChain(collection: Collection, deps: ApproveDeps):
   const txHash = await deps.sendTransaction(buildSetApprovedCall(deps.chainId, collection, true))
   if (!(await deps.waitForTransaction(txHash))) throw new ApprovalError('reverted', `Approval ${txHash} reverted`)
   return txHash
-}
-
-/** Cache key for measureItems: a new content hash re-measures the item. */
-export const itemSizesKey = (items: Item[]) => [
-  'approval-item-sizes',
-  items.map(item => `${item.id}:${item.currentContentHash ?? ''}`)
-]
-
-/** Bytes each item uploads, by item id. Files shared between items are measured once; unmeasurable ones count 0. */
-export async function measureItems(
-  items: Item[],
-  sizeOf: (hash: string) => Promise<number>
-): Promise<Map<string, number>> {
-  const sizes = new Map<string, Promise<number>>()
-  const measure = (hash: string) => {
-    if (!sizes.has(hash))
-      sizes.set(
-        hash,
-        sizeOf(hash).catch(() => 0)
-      )
-    return sizes.get(hash)!
-  }
-  const totals = await Promise.all(
-    items.map(async item => {
-      const bytes = await Promise.all(Object.values(getEntityContent(item)).map(measure))
-      return [item.id, bytes.reduce((sum, size) => sum + size, 0)] as const
-    })
-  )
-  return new Map(totals)
 }

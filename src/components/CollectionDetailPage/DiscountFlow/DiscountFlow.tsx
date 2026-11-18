@@ -19,7 +19,8 @@ import { ConfirmModal } from '~/components/ConfirmModal'
 import { PendingModal } from '~/components/PendingModal'
 import { SuccessModal } from '~/components/SuccessModal'
 import { CreatorSaleModal, type SaleTerms } from '../CreatorSaleModal'
-import * as S from './DiscountFlow.styles'
+import sell from '../SellItemFlow/SellItemModal.module.css'
+import styles from './DiscountFlow.module.css'
 
 type View = 'form' | 'settling' | 'success' | 'error' | 'unconfirmed'
 
@@ -163,22 +164,27 @@ export function DiscountFlow({ collection, session, sale, onClose }: Props) {
           testId="discount-unconfirmed-modal"
         >
           {unconfirmed && (
-            <S.Note data-testid="discount-unconfirmed-terms">
+            <div className={sell.note} data-testid="discount-unconfirmed-terms">
               <p>
                 {t('collection_discount.unconfirmed.terms', {
                   pct: discountPct(unconfirmed.payload),
                   date: intl.formatDate(unconfirmed.payload.checks.expiration, { month: 'short', day: 'numeric' })
                 })}{' '}
-                <S.TextButton type="button" data-testid="discount-unconfirmed-discard" onClick={discardUnconfirmed}>
+                <button
+                  className={styles.textButton}
+                  type="button"
+                  data-testid="discount-unconfirmed-discard"
+                  onClick={discardUnconfirmed}
+                >
                   {t('collection_discount.unconfirmed.discard')}
-                </S.TextButton>{' '}
+                </button>{' '}
                 {t(
                   social
                     ? 'collection_discount.unconfirmed.discard_hint_social'
                     : 'collection_discount.unconfirmed.discard_hint'
                 )}
               </p>
-            </S.Note>
+            </div>
           )}
         </ConfirmModal>
       )
@@ -186,11 +192,7 @@ export function DiscountFlow({ collection, session, sale, onClose }: Props) {
       return (
         <ConfirmModal
           title={t('collection_discount.error.title')}
-          description={t(
-            failure === 'wallet'
-              ? 'collection_discount.error.description_wallet'
-              : 'collection_discount.error.description'
-          )}
+          description={t(failure === 'wallet' ? 'wallet_error.wrong_account' : 'collection_discount.error.description')}
           art={{ src: errorArt }}
           onClose={onClose}
           cancel={{ label: t('collection_discount.cancel'), onClick: onClose, testId: 'discount-error-cancel' }}

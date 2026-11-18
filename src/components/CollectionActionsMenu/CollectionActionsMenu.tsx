@@ -1,18 +1,20 @@
 import { useState } from 'react'
-import { OpenInNew as OpenInNewIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { useDeleteCollection } from '~/hooks/useCollection'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { copyToClipboard } from '~/lib/clipboard'
 import { hasBeenApproved, isCollectionLocked, isLinkedCollection, type Collection } from '~/lib/collections'
 import { isCollectionOwner, type RoleKind } from '~/lib/collectionRoles'
+import { type ReviewParty } from '~/lib/events'
 import { openForumPost } from '~/lib/forumPost'
 import { openExternal } from '~/lib/navigation'
 import { shopCollectionUrl } from '~/lib/shop'
 import { useNotifications } from '~/lib/notifications'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { ActionsMenu, ActionsMenuDivider, ActionsMenuItem } from '~/components/ActionsMenu'
-import { JumpInIcon } from '~/components/Icons'
+import { JumpInIcon, OpenInNewIcon } from '~/components/Icons'
+import { CollectionActivityModal } from '~/components/CollectionActivityModal'
+import { type Item } from '~/lib/items'
 import { DeleteCollectionModal } from './DeleteCollectionModal'
 
 type Props = {
@@ -25,6 +27,12 @@ type Props = {
   label?: string
   /** Launches the collection in the desktop explorer; desktop-only, since phones would only reach the download page. */
   onPreviewInWorld?: () => void
+  /** The collection's items, so the activity timeline can name them in validator findings. */
+  items?: Item[]
+  /** The review timeline entry: published collections, for the people who can read it (roles and the committee). */
+  showActivity?: boolean
+  /** The side the viewer writes on the timeline as; without it they only read. */
+  commentAs?: ReviewParty
   /** Opens the Send Items flow; the header button covers this on desktop, so the item shows only when compact. */
   onSendItems?: () => void
   /** Opens the items in the editor; the header button covers this on desktop, so the item shows only when compact. */
@@ -33,6 +41,8 @@ type Props = {
   onCreateDiscount?: () => void
   /** The collection's forum post; the header button covers it on desktop, so the item shows only when compact. */
   forumLink?: string
+  /** The menu is the forum post's only entry on every screen size, once reviews are discussed in the app. */
+  forumInMenu?: boolean
   /** Opens the collaborators / senders list; without it the owner-only entries are not rendered. */
   onManageRoles?: (kind: RoleKind) => void
   /** Opens the transfer-ownership dialog; without it the owner-only entry is not rendered. */
@@ -53,10 +63,14 @@ export function CollectionActionsMenu({
   showRoles = true,
   label,
   onPreviewInWorld,
+  items,
+  showActivity = false,
+  commentAs,
   onSendItems,
   onPreviewItems,
   onCreateDiscount,
   forumLink,
+  forumInMenu = false,
   onManageRoles,
   onTransferOwnership,
   onEditUrn,
@@ -68,9 +82,10 @@ export function CollectionActionsMenu({
   const showToast = useNotifications(state => state.showToast)
   const deleteCollection = useDeleteCollection(address)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
+  const [isActivityOpen, setActivityOpen] = useState(false)
 
   // Small screens are mostly a viewer: copying and the role lists stay, deleting is desktop-only.
-  const compact = useMediaQuery(theme.media.noActions)
+  const compact = useMediaQuery(media.noActions)
 
   const isOnChain = collection.isPublished
   const isLinked = isLinkedCollection(collection)
@@ -85,7 +100,7 @@ export function CollectionActionsMenu({
   const showSend = compact && !!onSendItems
   // Same for the header's Open Editor button; on mobile the editor is a viewer, hence "Preview".
   const showPreview = compact && !!onPreviewItems
-  const showForum = compact && !!forumLink
+  const showForum = (compact || forumInMenu) && !!forumLink
   const showDiscount = compact && !!onCreateDiscount
   const showEditUrn = !compact && isLinked && !isOnChain && !!onEditUrn
   const showEditContract = !compact && isLinked && !!onEditContract
@@ -192,6 +207,11 @@ export function CollectionActionsMenu({
                 <OpenInNewIcon aria-hidden />
               </ActionsMenuItem>
             )}
+            {showActivity && (
+              <ActionsMenuItem testId="collection-activity" onClick={() => setActivityOpen(true)}>
+                {t('collection_detail_page.actions.activity')}
+              </ActionsMenuItem>
+            )}
           </>
         )}
         {isOnChain && isOwner && showRoles && onManageRoles && (
@@ -220,6 +240,15 @@ export function CollectionActionsMenu({
         )}
       </ActionsMenu>
 
+      {isActivityOpen && (
+        <CollectionActivityModal
+          collection={collection}
+          address={address}
+          items={items}
+          commentAs={commentAs}
+          onClose={() => setActivityOpen(false)}
+        />
+      )}
       {isDeleteOpen && (
         <DeleteCollectionModal
           name={collection.name}

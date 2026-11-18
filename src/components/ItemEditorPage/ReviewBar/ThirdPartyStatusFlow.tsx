@@ -7,7 +7,7 @@ import { useReviewThirdParty } from '~/hooks/useLinkedReview'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { useNotifications } from '~/lib/notifications'
 import { type ThirdParty } from '~/lib/thirdParty'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 
 type Props = {
   session: Session
@@ -66,7 +66,15 @@ export function ThirdPartyStatusFlow({ session, thirdParty, approved, onClose, o
     <ConfirmModal
       title={t(`item_editor.linked_review.${action}.title`, { name: thirdParty.name })}
       description={t(`item_editor.linked_review.${action}.description`)}
-      error={review.isError ? t(`item_editor.linked_review.${action}.error`) : null}
+      error={
+        review.isError
+          ? t(
+              isWalletStateError(review.error)
+                ? 'wallet_error.wrong_account'
+                : `item_editor.linked_review.${action}.error`
+            )
+          : null
+      }
       busy={review.isPending && !awaitingWallet}
       onClose={review.isPending ? () => undefined : onClose}
       fillActions

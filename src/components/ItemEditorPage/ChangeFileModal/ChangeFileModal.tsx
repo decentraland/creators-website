@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
-import { ErrorOutline as HintIcon, UploadFileOutlined as UploadIcon } from '@mui/icons-material'
+import { ErrorOutlineIcon as HintIcon, UploadFileOutlinedIcon as UploadIcon } from '~/components/Icons'
 import { Button } from '~/components/Button'
 import { CategorySelect } from '~/components/CategorySelect'
 import { Checkbox } from '~/components/Checkbox'
 import { ConfirmModal } from '~/components/ConfirmModal'
 import { BodyShapePicker, DraftPreviewPane, DraftProcessor } from '~/components/ItemDraftModal'
 import { Modal } from '~/components/Modal'
+import { useMeasuredBytes } from '~/hooks/useItemSize'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useTranslation } from '~/intl'
 import { errorCode, track } from '~/lib/analytics'
-import { imageThumbnailPatch, needsPreviewData, type PreviewDraft } from '~/lib/draftPreview'
+import { applyPreviewResult, imageThumbnailPatch, needsPreviewData, type PreviewDraft } from '~/lib/draftPreview'
 import { pickFile } from '~/lib/filePicker'
-import { type ItemFileChange } from '~/lib/itemDraft'
+import { toFileChangeSaveable, type ItemFileChange } from '~/lib/itemDraft'
 import { type BuiltItem } from '~/lib/itemFactory'
 import { ITEM_EXTENSIONS, ItemFileError, THUMBNAIL_PATH, getExtension, isImageFile } from '~/lib/itemFiles'
 import {
@@ -25,6 +26,7 @@ import {
   needsNewCategory,
   type LoadedItemModel
 } from '~/lib/itemModelImport'
+import { formatItemSize, getItemSizeLimit, isItemTooBigError, isOverSizeLimit, type ItemSize } from '~/lib/itemSize'
 import {
   BodyShapeType,
   IMAGE_WEARABLE_METRICS,
@@ -36,7 +38,8 @@ import {
 import { captureError } from '~/lib/monitoring'
 import { DEFAULT_RARITY } from '~/lib/rarities'
 import { getWearableCategoryOptions } from '~/lib/wearableCategories'
-import * as S from './ChangeFileModal.styles'
+import draftModal from '~/components/ItemDraftModal/ItemDraftModal.module.css'
+import styles from './ChangeFileModal.module.css'
 
 type Props = {
   item: Item
@@ -116,8 +119,30 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
   const needsCategory = useMemo(() => !!file && needsNewCategory(file, item, bodyShape), [file, item, bodyShape])
   const categories = useMemo(() => (file ? getWearableCategoryOptions(file.contents) : []), [file])
   const shapeLabel = t(`add_items_modal.body_shape_option.${bodyShape}`)
+  // The item as Save would leave it, measured the catalyst way: the new files plus everything it keeps (the other
+  // body shape's files, the thumbnail, new or kept, and the rarity image).
+  const newThumbnail = keepThumbnail ? (draft?.contents[THUMBNAIL_PATH] ?? null) : null
+  const measuredBytes = useMeasuredBytes(
+    file && !pickError
+      ? async () =>
+          toFileChangeSaveable(item, {
+            update: await buildModelUpdate(file, item, bodyShape, {}),
+            thumbnail: newThumbnail,
+            category: null
+          })
+      : null,
+    [item, file, bodyShape, newThumbnail],
+    'item_file_change'
+  )
+  const sizeCategory = (needsCategory ? category : null) ?? item.data.category
+  const size = useMemo<ItemSize | null>(
+    () => (measuredBytes !== null ? { bytes: measuredBytes, limit: getItemSizeLimit(item.type, sizeCategory) } : null),
+    [measuredBytes, item.type, sizeCategory]
+  )
+  const sizeText = useMemo(() => (size ? formatItemSize(size) : null), [size])
+  const sizeExceeded = !!size && isOverSizeLimit(size)
   const isReady = !!draft && !!draft.metrics && !!draft.thumbnail
-  const canSave = isReady && !pickError && (!needsCategory || category !== null) && !isSaving
+  const canSave = isReady && !pickError && (!needsCategory || category !== null) && !sizeExceeded && !isSaving
 
   function reportError(err: unknown) {
     const key = err instanceof ItemFileError ? err.messageKey : 'invalid_model_file'
@@ -205,9 +230,12 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
     const thumbnail = keepThumbnail ? (draft.contents[THUMBNAIL_PATH] ?? null) : null
     try {
       await onSave({ update, thumbnail, category: needsCategory ? category : null })
-    } catch {
-      // The editor reported the failed save; the loaded file stays for another try.
-      if (mountedRef.current) setSaving(false)
+    } catch (err) {
+      // The editor reported any other failed save; the loaded file stays for another try.
+      if (mountedRef.current) {
+        if (isItemTooBigError(err)) reportError(err)
+        setSaving(false)
+      }
       return
     }
     track('Change item file', {
@@ -240,27 +268,27 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
         testId="change-file-modal"
       >
         {draft && loaded ? (
-          <S.Layout>
-            <S.Main>
-              <S.Content data-testid="change-file-form">
+          <div className={draftModal.layout}>
+            <div className={draftModal.main}>
+              <section className={draftModal.content} data-testid="change-file-form">
                 <DraftPreviewPane
                   draft={draft}
                   onOpenThumbnail={() =>
                     thumbnailEditor.edit({ kind: 'files', id: draft.id, type: draft.type, contents: draft.contents })
                   }
                 >
-                  <S.ThumbnailToggle>
+                  <div className={styles.thumbnailToggle}>
                     <Checkbox checked={keepThumbnail} onChange={setKeepThumbnail} testId="change-file-keep-thumbnail">
                       {t('item_editor.change_file.use_thumbnail')}
                     </Checkbox>
-                  </S.ThumbnailToggle>
+                  </div>
                 </DraftPreviewPane>
-                <S.FormPane>
-                  <S.FormHeading>{t('item_editor.change_file.heading')}</S.FormHeading>
-                  <S.Field as="div" data-hinted>
-                    <S.FieldLabel>
+                <div className={draftModal.formPane}>
+                  <h3 className={draftModal.formHeading}>{t('item_editor.change_file.heading')}</h3>
+                  <div className={draftModal.field} data-hinted>
+                    <span className={draftModal.fieldLabel}>
                       {t('add_items_modal.body_shape')}
-                      <S.FieldHint data-testid="change-file-effect">
+                      <span className={draftModal.fieldHint} data-testid="change-file-effect" data-mode={mode}>
                         <HintIcon />
                         {lockHint ??
                           t(
@@ -269,8 +297,8 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
                               : `item_editor.change_file.effect.${mode}`,
                             { shape: shapeLabel }
                           )}
-                      </S.FieldHint>
-                    </S.FieldLabel>
+                      </span>
+                    </span>
                     <BodyShapePicker
                       value={bodyShape}
                       locked={locked}
@@ -278,32 +306,51 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
                       onChange={pickShape}
                     />
                     {pickError && (
-                      <S.ErrorText data-testid="change-file-pick-error">
+                      <p className={draftModal.errorText} data-testid="change-file-pick-error">
                         {t(`add_items_modal.file_error.${pickError}`)}
-                      </S.ErrorText>
+                      </p>
                     )}
-                  </S.Field>
+                  </div>
                   {needsCategory && (
-                    <S.Field as="div">
-                      <S.FieldLabel>
+                    <div className={draftModal.field}>
+                      <span className={draftModal.fieldLabel}>
                         {t('add_items_modal.category')}
-                        <S.FieldHint>
+                        <span className={draftModal.fieldHint}>
                           <HintIcon />
                           {t('item_editor.change_file.category_hint')}
-                        </S.FieldHint>
-                      </S.FieldLabel>
+                        </span>
+                      </span>
                       <CategorySelect
                         value={category}
                         categories={categories}
                         testId="change-file-category"
                         onChange={setCategory}
                       />
-                    </S.Field>
+                    </div>
                   )}
-                  {error && <S.ErrorText data-testid="change-file-error">{error}</S.ErrorText>}
-                </S.FormPane>
-              </S.Content>
-              <S.Footer>
+                  {sizeText && (
+                    <p
+                      className={draftModal.sizeLine}
+                      data-testid="change-file-size"
+                      data-exceeded={sizeExceeded || undefined}
+                    >
+                      {t('item_size.label')}
+                      <strong>{t('item_size.value', sizeText)}</strong>
+                    </p>
+                  )}
+                  {sizeExceeded && sizeText && (
+                    <p className={draftModal.errorText} role="alert" data-testid="change-file-size-error">
+                      {t('add_items_modal.file_error.size_exceeded', sizeText)}
+                    </p>
+                  )}
+                  {error && (
+                    <p className={draftModal.errorText} data-testid="change-file-error">
+                      {error}
+                    </p>
+                  )}
+                </div>
+              </section>
+              <div className={draftModal.footer}>
                 <Button
                   type="button"
                   variant="secondary"
@@ -313,7 +360,7 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
                 >
                   {t('add_items_modal.cancel')}
                 </Button>
-                <S.FooterRight>
+                <div className={draftModal.footerRight}>
                   <Button
                     type="button"
                     variant="primary"
@@ -324,13 +371,14 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
                   >
                     {t('add_items_modal.save')}
                   </Button>
-                </S.FooterRight>
-              </S.Footer>
-            </S.Main>
-          </S.Layout>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
-          <S.PickStep>
-            <S.Dropzone
+          <div className={styles.pickStep}>
+            <div
+              className={styles.dropzone}
               data-testid="change-file-dropzone"
               data-dragging={isDragging || undefined}
               data-busy={isLoading || undefined}
@@ -341,49 +389,61 @@ export function ChangeFileModal({ item, lockedBodyShape, linked = false, onSave,
               onDragLeave={() => setDragging(false)}
               onDrop={handleDrop}
             >
-              {isLoading && <S.Spinner aria-hidden data-spinner data-testid="change-file-processing" />}
-              <S.DropIcon>
+              {isLoading && (
+                <span className={styles.spinner} aria-hidden data-spinner data-testid="change-file-processing" />
+              )}
+              <span className={styles.dropIcon}>
                 <UploadIcon />
-              </S.DropIcon>
-              <S.DropText>
+              </span>
+              <span className={styles.dropText}>
                 {rich('item_editor.change_file.drop_description', {
                   browse: chunks => (
-                    <S.BrowseLink
+                    <button
+                      className={styles.browseLink}
                       type="button"
                       data-testid="change-file-browse"
                       disabled={isLoading}
                       onClick={() => void browse()}
                     >
                       {chunks}
-                    </S.BrowseLink>
+                    </button>
                   )
                 })}
-              </S.DropText>
-              <S.DropFormats>{t('collection_detail_page.empty.formats')}</S.DropFormats>
-            </S.Dropzone>
-            {error && <S.DropError data-testid="change-file-error">{error}</S.DropError>}
-            <S.PickActions>
+              </span>
+              <span className={styles.dropFormats}>{t('collection_detail_page.empty.formats')}</span>
+            </div>
+            {error && (
+              <p className={styles.dropError} data-testid="change-file-error">
+                {error}
+              </p>
+            )}
+            <div className={styles.pickActions}>
               <Button type="button" variant="secondary" data-testid="change-file-cancel" onClick={requestClose}>
                 {t('add_items_modal.cancel')}
               </Button>
-            </S.PickActions>
-          </S.PickStep>
+            </div>
+          </div>
+        )}
+        {draft && needsPreviewData(draft) && (
+          <DraftProcessor
+            draft={draft}
+            flow="item_file_change"
+            onResult={(id, result) =>
+              setDraft(current => (current && current.id === id ? applyPreviewResult(current, result) : current))
+            }
+            onError={(_id, reason) => {
+              setDraft(null)
+              setLoaded(null)
+              // A timeout is already reported to Sentry by the processor.
+              reportError(
+                reason === 'timeout'
+                  ? new ItemFileError('preview_timeout')
+                  : new Error('The preview could not process the model')
+              )
+            }}
+          />
         )}
       </Modal>
-
-      {draft && needsPreviewData(draft) && (
-        <DraftProcessor
-          draft={draft}
-          onResult={(id, patch) =>
-            setDraft(current => (current && current.id === id ? { ...current, ...patch } : current))
-          }
-          onError={() => {
-            setDraft(null)
-            setLoaded(null)
-            reportError(new Error('The preview could not process the model'))
-          }}
-        />
-      )}
 
       {thumbnailEditor.modal}
 

@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { BodyShape } from '@dcl/schemas'
 import {
-  ErrorOutline as WarningIcon,
-  Refresh as RerunIcon,
-  ReportProblemOutlined as ErrorIcon
-} from '@mui/icons-material'
+  ErrorOutlineIcon as WarningIcon,
+  RefreshIcon as RerunIcon,
+  ReportProblemOutlinedIcon as ErrorIcon
+} from '~/components/Icons'
 import { Tooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
 import { type ItemType } from '~/lib/items'
 import { ValidationSeverity, type ValidationIssue } from '~/lib/validation'
-import * as S from './ItemValidationCard.styles'
+import { ItemThumbnail } from '~/components/ItemThumbnail'
+import styles from './ItemValidationCard.module.css'
 
 /** The item the results are about, shown above them. */
 export type ValidationSubject = {
@@ -48,11 +49,12 @@ export function ItemValidationCard({ subject, issues, onRerun, onSelect, testId 
     void onRerun().finally(() => setRunning(false))
   }
 
-  const Subject = onSelect ? S.SubjectButton : S.Subject
+  const Subject = onSelect ? 'button' : 'div'
 
   const rerunButton = onRerun && (
     <Tooltip content={t(isRunning ? 'item_validation.rerunning' : 'item_validation.rerun')} asChild>
-      <S.Rerun
+      <button
+        className={styles.rerun}
         type="button"
         aria-label={t('item_validation.rerun_label')}
         aria-disabled={isRunning || undefined}
@@ -62,58 +64,68 @@ export function ItemValidationCard({ subject, issues, onRerun, onSelect, testId 
         onClick={rerun}
       >
         <RerunIcon />
-      </S.Rerun>
+      </button>
     </Tooltip>
   )
 
   return (
-    <S.Card data-testid={`${testId}-card`}>
+    <section className={styles.card} data-testid={`${testId}-card`}>
       {(subject || rerunButton) && (
-        <S.Header>
+        <div className={styles.header}>
           {subject && (
             <Subject
+              className={onSelect ? styles.subjectButton : styles.subject}
               {...(onSelect && { type: 'button' as const, 'data-testid': `${testId}-select`, onClick: onSelect })}
             >
-              {subject.thumbnail !== undefined && <S.Thumbnail src={subject.thumbnail} rarity={subject.rarity} />}
-              <S.SubjectText data-testid={`${testId}-subject`}>
-                <S.SubjectName>{subject.name}</S.SubjectName>
-                <S.SubjectMeta>
+              {subject.thumbnail !== undefined && (
+                <ItemThumbnail className={styles.thumbnail} src={subject.thumbnail} rarity={subject.rarity} />
+              )}
+              <span className={styles.subjectText} data-testid={`${testId}-subject`}>
+                <span className={styles.subjectName}>{subject.name}</span>
+                <span className={styles.subjectMeta}>
                   <span>{t(`add_items_modal.type.${subject.type}`)}</span>
                   {subject.category && <span>{t(`collection_detail_page.category.${subject.category}`)}</span>}
-                </S.SubjectMeta>
-              </S.SubjectText>
+                </span>
+              </span>
             </Subject>
           )}
           {rerunButton}
-        </S.Header>
+        </div>
       )}
       {isRunning ? null : issues.length > 0 ? (
-        <S.IssueList data-testid={`${testId}-issues`}>
+        <ul className={styles.issueList} data-testid={`${testId}-issues`}>
           {issues.map((issue, index) => {
             const shape = shapeLabel(issue.bodyShapes)
             return (
-              <S.Issue key={`${issue.code}-${issue.where ?? ''}-${index}`} data-severity={issue.severity}>
+              <li
+                className={styles.issue}
+                key={`${issue.code}-${issue.where ?? ''}-${index}`}
+                data-severity={issue.severity}
+                data-code={issue.code}
+              >
                 {issue.severity === ValidationSeverity.ERROR ? <ErrorIcon /> : <WarningIcon />}
-                <S.IssueText>
+                <span className={styles.issueText}>
                   {(issue.title || shape) && (
-                    <S.IssueTitle>
+                    <span className={styles.issueTitle}>
                       {issue.title && <strong>{issue.title}</strong>}
                       {shape && (
-                        <S.ShapeLabel data-testid={`${testId}-shape`}>
+                        <span className={styles.shapeLabel} data-testid={`${testId}-shape`}>
                           {t(`item_validation.body_shape.${shape}`)}
-                        </S.ShapeLabel>
+                        </span>
                       )}
-                    </S.IssueTitle>
+                    </span>
                   )}
                   {issue.message}
-                </S.IssueText>
-              </S.Issue>
+                </span>
+              </li>
             )
           })}
-        </S.IssueList>
+        </ul>
       ) : (
-        <S.Empty data-testid={`${testId}-pass`}>{t('item_editor.validation.pass')}</S.Empty>
+        <p className={styles.empty} data-testid={`${testId}-pass`}>
+          {t('item_editor.validation.pass')}
+        </p>
       )}
-    </S.Card>
+    </section>
   )
 }

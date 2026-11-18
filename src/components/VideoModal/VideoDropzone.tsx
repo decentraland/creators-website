@@ -1,9 +1,9 @@
 import { useRef, useState, type DragEvent, type ReactNode } from 'react'
-import { VideocamOutlined as VideoIcon } from '@mui/icons-material'
+import { VideocamOutlinedIcon as VideoIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { ItemFileError, MAX_VIDEO_FILE_SIZE, VIDEO_EXTENSIONS, toMB, validateVideoFile } from '~/lib/itemFiles'
 import { loadVideoMetadata } from '~/lib/media'
-import * as S from './VideoDropzone.styles'
+import styles from './VideoDropzone.module.css'
 
 /**
  * Validates a picked preview video (mp4, ≤ 250MB, decodable) and returns it; throws ItemFileError
@@ -63,7 +63,8 @@ export function VideoDropzone({ onPick, children, compact = false, testId = 'vid
 
   return (
     <>
-      <S.Zone
+      <div
+        className={styles.zone}
         data-testid={testId}
         data-empty={!children || undefined}
         data-compact={compact || undefined}
@@ -76,27 +77,28 @@ export function VideoDropzone({ onPick, children, compact = false, testId = 'vid
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
       >
-        {isLoading && <S.Spinner aria-hidden data-spinner data-testid={`${testId}-loading`} />}
+        {isLoading && <span className={styles.spinner} aria-hidden data-spinner data-testid={`${testId}-loading`} />}
         {children ?? (
           <>
             <VideoIcon />
-            <S.DropText>
+            <span className={styles.dropText}>
               <span data-desktop>{t('video_modal.drop_cta')}</span>
-              <S.BrowseLink
+              <button
+                className={styles.browseLink}
                 type="button"
                 data-testid={`${testId}-browse`}
                 disabled={isLoading}
                 onClick={() => inputRef.current?.click()}
               >
                 {t('video_modal.browse')}
-              </S.BrowseLink>
-            </S.DropText>
-            <S.Hint>
+              </button>
+            </span>
+            <span className={styles.hint}>
               {t('video_modal.hint', {
                 extensions: VIDEO_EXTENSIONS.join(', ').toUpperCase(),
                 size: toMB(MAX_VIDEO_FILE_SIZE)
               })}
-            </S.Hint>
+            </span>
           </>
         )}
         <input
@@ -110,8 +112,12 @@ export function VideoDropzone({ onPick, children, compact = false, testId = 'vid
             event.target.value = ''
           }}
         />
-      </S.Zone>
-      {error && <S.ErrorText data-testid={`${testId}-error`}>{error}</S.ErrorText>}
+      </div>
+      {error && (
+        <p className={styles.errorText} data-testid={`${testId}-error`}>
+          {error}
+        </p>
+      )}
     </>
   )
 }

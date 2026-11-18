@@ -5,17 +5,18 @@ import {
   ALREADY_PUBLISHED_STATUS,
   BuilderServerError,
   COLLECTION_LOCKED_STATUS,
-  fetchContent,
+  fetchContentSize,
   saveItem
 } from './builder'
-import { IMAGE_PATH, ItemFileError, THUMBNAIL_PATH, VIDEO_PATH } from './itemFiles'
+import { ItemFileError, THUMBNAIL_PATH } from './itemFiles'
 import {
   addRepresentationToItem,
-  assertUploadSize,
+  assertThumbnailSize,
   buildItem,
   type BuiltItem,
   type ItemDraftPayload
 } from './itemFactory'
+import { assertItemSize, type MeasureDeps } from './itemSize'
 import { type Item } from './items'
 
 export type UploadDraft = ItemDraftPayload & {
@@ -100,6 +101,27 @@ export async function planUpload(
   return operations
 }
 
+/**
+ * The operation a draft will be saved in, built exactly as the upload builds it (thumbnail quantized, image.png
+ * rendered, a variant merged into its target), so its size can be shown before saving. Only the drafts that share
+ * that operation are built: the draft, the batch draft it is a variant of, and that draft's other variants.
+ */
+export async function planDraftUpload(
+  draftId: string,
+  drafts: UploadDraft[],
+  existingItems: Item[]
+): Promise<UploadOperation | null> {
+  const draft = drafts.find(candidate => candidate.id === draftId)
+  if (!draft) return null
+  const baseId =
+    draft.variantTargetId && drafts.some(c => c.id === draft.variantTargetId) ? draft.variantTargetId : null
+  const group = baseId
+    ? drafts.filter(candidate => candidate.id === baseId || candidate.variantTargetId === baseId)
+    : [draft, ...drafts.filter(candidate => candidate.variantTargetId === draft.id)]
+  const operations = await planUpload(group, existingItems)
+  return operations.find(operation => operation.draftIds.includes(draftId)) ?? null
+}
+
 const URN_TAKEN_PATTERN = /belong to another item/i
 
 function toFailureReason(error: unknown): UploadFailureReason {
@@ -119,29 +141,23 @@ function toFailureReason(error: unknown): UploadFailureReason {
 const ABORTING_REASONS: UploadFailureReason[] = ['locked', 'published']
 
 /**
- * Re-checks the caps right before the PUT (legacy sagas). An update onto an existing item counts
- * the stored files it keeps (legacy calculateModelFinalSize), fetched to learn their sizes.
+ * Re-checks the caps right before the PUT (legacy sagas): the thumbnail's own, then the item's whole size as the
+ * catalyst counts it (lib/itemSize). An update onto an existing item counts the stored files it keeps, read by hash.
  */
-async function checkOperationSize(operation: UploadOperation): Promise<void> {
-  const { item, blobs } = operation.built
-  // Every stored file the update keeps counts, the retained thumbnail included; the video and
-  // catalyst image are outside the cap. The same hash at several paths is one stored file.
-  const retainedHashes = operation.isExistingItemUpdate
-    ? new Set(
-        Object.entries(item.contents)
-          .filter(([path]) => !blobs[path] && path !== VIDEO_PATH && path !== IMAGE_PATH)
-          .map(([, hash]) => hash)
-      )
-    : new Set<string>()
-  const stored = await Promise.all([...retainedHashes].map(async hash => (await fetchContent(hash)).size))
-  assertUploadSize(item, blobs, stored)
+async function checkOperationSize(operation: UploadOperation, measure: MeasureDeps): Promise<void> {
+  assertThumbnailSize(operation.built.blobs)
+  await assertItemSize(operation.built, measure)
 }
 
 /**
  * Uploads the operations sequentially. A locked/published collection aborts the rest (retrying
  * can never succeed); any other failure moves on to the next operation.
  */
-export async function executeUpload(address: string, operations: UploadOperation[]): Promise<UploadResult> {
+export async function executeUpload(
+  address: string,
+  operations: UploadOperation[],
+  measure: MeasureDeps = { sizeOf: fetchContentSize }
+): Promise<UploadResult> {
   const savedDraftIds: string[] = []
   const failedDraftIds: string[] = []
   let failureReason: UploadFailureReason | null = null
@@ -149,7 +165,7 @@ export async function executeUpload(address: string, operations: UploadOperation
   for (let i = 0; i < operations.length; i++) {
     const operation = operations[i]
     try {
-      await checkOperationSize(operation)
+      await checkOperationSize(operation, measure)
       await saveItem(address, operation.built.item, operation.built.blobs)
       savedDraftIds.push(...operation.draftIds)
     } catch (error) {

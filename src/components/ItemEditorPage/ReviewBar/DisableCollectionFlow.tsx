@@ -7,7 +7,7 @@ import { useDisableCollection } from '~/hooks/useCuration'
 import { isSocialLogin, type Session } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { useNotifications } from '~/lib/notifications'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 
 type Props = {
   session: Session
@@ -67,7 +67,11 @@ export function DisableCollectionFlow({ session, collection, onClose, onDisabled
     <ConfirmModal
       title={t('item_editor.review.disable.title', { collection: collection.name })}
       description={t('item_editor.review.disable.description')}
-      error={disable.isError ? t('item_editor.review.disable.error') : null}
+      error={
+        disable.isError
+          ? t(isWalletStateError(disable.error) ? 'wallet_error.wrong_account' : 'item_editor.review.disable.error')
+          : null
+      }
       busy={disable.isPending && !awaitingWallet}
       // Closing would lose track of the open request; a second Disable would revert and cost gas.
       onClose={disable.isPending ? () => undefined : onClose}

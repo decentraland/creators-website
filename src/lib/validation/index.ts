@@ -4,6 +4,7 @@ import { localValidator } from './localValidator'
 import { type ItemValidator } from './types'
 
 export type {
+  ItemCheck,
   ItemValidator,
   ModelFile,
   ThumbnailSource,

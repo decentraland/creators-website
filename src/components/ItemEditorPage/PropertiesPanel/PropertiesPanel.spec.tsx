@@ -8,6 +8,8 @@ import { Providers } from '~/components/CollectionDetailPage/SellItemFlow/testUt
 import { ItemType, type Item } from '~/lib/items'
 import { useItemForm } from '../useItemForm'
 import { type ItemFileChange } from '~/lib/itemDraft'
+import { type ItemSize } from '~/lib/itemSize'
+import { useNotifications } from '~/lib/notifications'
 import { PropertiesPanel } from './PropertiesPanel'
 
 // The change-file modal has its own spec; here it hands back whatever result the test prepared.
@@ -22,9 +24,11 @@ vi.mock('../ChangeFileModal', () => ({
     />
   )
 }))
+const builder = vi.hoisted(() => ({ fetchItemContents: vi.fn() }))
 vi.mock('~/lib/builder', async () => ({
   ...(await vi.importActual<typeof import('~/lib/builder')>('~/lib/builder')),
-  fetchContent: () => Promise.resolve(new Blob())
+  fetchContent: () => Promise.resolve(new Blob()),
+  fetchItemContents: builder.fetchItemContents
 }))
 
 const campaign = vi.hoisted(() => ({ current: null as { name: string; mainTag: string } | null }))
@@ -75,7 +79,8 @@ function Harness({
   onSave = vi.fn(),
   onSaveFile = () => Promise.resolve(),
   isSaving = false,
-  subject = item
+  subject = item,
+  size = null
 }: {
   editable?: boolean
   canDownload?: boolean
@@ -84,6 +89,7 @@ function Harness({
   onSaveFile?: (change: ItemFileChange) => Promise<void>
   isSaving?: boolean
   subject?: Item
+  size?: ItemSize | null
 }) {
   const form = useItemForm(subject)
   return (
@@ -98,9 +104,11 @@ function Harness({
       dispatch={form.dispatch}
       isDirty={form.isDirty}
       isSaving={isSaving}
+      size={size}
       springBones={null}
       onSave={onSave}
       onSaveFile={onSaveFile}
+      onSaveThumbnail={() => Promise.resolve()}
       onRevert={() => form.reset(subject)}
       onDeleted={vi.fn()}
     />
@@ -150,6 +158,22 @@ describe('PropertiesPanel', () => {
     expect(screen.queryByTestId('properties-panel-download')).not.toBeInTheDocument()
   })
 
+  it('tells the creator a download failed even after they left the panel', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    let fail: (error: Error) => void = () => undefined
+    builder.fetchItemContents.mockReturnValue(new Promise((_, reject) => (fail = reject)))
+    const { unmount } = render(<Harness />, { wrapper: Providers })
+    await userEvent.click(screen.getByTestId('properties-panel-actions'))
+    await userEvent.click(screen.getByTestId('properties-panel-download'))
+    unmount()
+    fail(new Error('storage down'))
+    await vi.waitFor(() =>
+      expect(useNotifications.getState().toasts).toContainEqual(
+        expect.objectContaining({ type: 'error', message: "We couldn't download the item. Please try again." })
+      )
+    )
+  })
+
   it('exposes the wearable options as switches', async () => {
     render(<Harness />, { wrapper: Providers })
     const vrm = await screen.findByTestId('properties-panel-vrm-export')
@@ -166,6 +190,30 @@ describe('PropertiesPanel', () => {
     expect(await screen.findByTestId('properties-panel-outline')).toBeInTheDocument()
     expect(screen.queryByTestId('properties-panel-vrm-export')).not.toBeInTheDocument()
     expect(screen.queryByTestId('properties-panel-utility')).not.toBeInTheDocument()
+  })
+
+  it('keeps the thumbnail from being changed while a save runs, so two saves never overwrite each other', () => {
+    const { rerender } = render(<Harness isSaving />, { wrapper: Providers })
+    expect(screen.getByTestId('properties-panel-thumbnail')).toBeDisabled()
+    rerender(<Harness />)
+    expect(screen.getByTestId('properties-panel-thumbnail')).toBeEnabled()
+  })
+
+  it('shows the item size against its limit, thumbnail and rarity image included', () => {
+    render(<Harness size={{ bytes: 3_093_299, limit: 3 * 1024 * 1024 }} />, { wrapper: Providers })
+    expect(screen.getByTestId('properties-panel-size')).toHaveTextContent('2.95 / 3.00 MB')
+    expect(screen.getByTestId('properties-panel-size')).not.toHaveAttribute('data-exceeded')
+    expect(screen.queryByTestId('properties-panel-size-error')).not.toBeInTheDocument()
+  })
+
+  it('says what counts when an item is over its size limit, and still lets an edit of its details be saved', async () => {
+    render(<Harness size={{ bytes: 3_243_672, limit: 3 * 1024 * 1024 }} />, { wrapper: Providers })
+    expect(screen.getByTestId('properties-panel-size')).toHaveAttribute('data-exceeded', 'true')
+    expect(screen.getByTestId('properties-panel-size-error')).toHaveTextContent(
+      'Over the size limit (thumbnail included). Reduce its textures or geometry.'
+    )
+    await userEvent.type(screen.getByTestId('properties-panel-name'), ' 2')
+    expect(screen.getByTestId('properties-panel-save')).toBeEnabled()
   })
 
   it('keeps a name without characters from being saved', async () => {

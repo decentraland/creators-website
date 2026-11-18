@@ -1,8 +1,4 @@
-import {
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
-  WarningAmberOutlined as WarningIcon
-} from '@mui/icons-material'
+import { ChevronLeftIcon, ChevronRightIcon, WarningAmberOutlinedIcon as WarningIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { type Collection } from '~/lib/collections'
 import { getNewOwnerError } from '~/lib/collectionOwnership'
@@ -12,9 +8,12 @@ import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { StepIndicator } from '~/components/StepIndicator'
 import { BeneficiaryInput } from '../SellItemFlow/BeneficiaryInput'
-import * as Sell from '../SellItemFlow/SellItemModal.styles'
+import { cx } from '~/lib/cx'
+import sell from '../SellItemFlow/SellItemModal.module.css'
+import send from '../SendItemsFlow/SendItemsModal.module.css'
+import styles from './TransferOwnershipModal.module.css'
+import roles from '../ManageRolesFlow/ManageRolesModal.module.css'
 import { RecipientLine } from '../SendItemsFlow/SendItemsModal'
-import * as S from './TransferOwnershipModal.styles'
 
 export type TransferStep = 'details' | 'confirm'
 
@@ -71,23 +70,29 @@ export function TransferOwnershipModal({
       compact
       testId="transfer-ownership-modal"
     >
-      <Sell.Divider />
-      <S.Steps>
+      <hr className={sell.divider} />
+      <div className={send.steps}>
         <StepIndicator
           current={step === 'details' ? 1 : 2}
           total={2}
           labels={[t('transfer_ownership_modal.step_details'), t('transfer_ownership_modal.step_confirm')]}
           testId="transfer-steps"
         />
-      </S.Steps>
-      <S.Body key={step} data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
+      </div>
+      <div
+        className={cx(send.body, styles.body)}
+        key={step}
+        data-busy={busy || undefined}
+        aria-busy={busy || undefined}
+        {...(busy ? { inert: '' } : {})}
+      >
         {step === 'details' ? (
           <>
-            <S.Description data-testid="transfer-ownership-description">
+            <p className={roles.description} data-testid="transfer-ownership-description">
               {t('transfer_ownership_modal.description', { name: collection.name })}
-            </S.Description>
-            <S.Field>
-              <S.Label>{t('transfer_ownership_modal.new_owner')}</S.Label>
+            </p>
+            <div className={sell.field}>
+              <span className={sell.label}>{t('transfer_ownership_modal.new_owner')}</span>
               <BeneficiaryInput
                 value={newOwner}
                 onChange={onNewOwnerChange}
@@ -98,10 +103,12 @@ export function TransferOwnershipModal({
                 clearLabel={t('transfer_ownership_modal.clear')}
                 testId="new-owner"
               />
-            </S.Field>
-            <S.Field>
-              <S.Label>{t('transfer_ownership_modal.confirm_label', { name: collection.name })}</S.Label>
-              <S.Box>
+            </div>
+            <div className={sell.field}>
+              <span className={sell.label}>
+                {t('transfer_ownership_modal.confirm_label', { name: collection.name })}
+              </span>
+              <div className={sell.box}>
                 <input
                   value={confirmation}
                   placeholder={collection.name}
@@ -110,25 +117,25 @@ export function TransferOwnershipModal({
                   data-testid="transfer-confirmation-input"
                   onChange={event => onConfirmationChange(event.target.value)}
                 />
-              </S.Box>
-            </S.Field>
+              </div>
+            </div>
           </>
         ) : (
           <>
-            <S.Intro>{t('transfer_ownership_modal.confirm_intro', { name: collection.name })}</S.Intro>
-            <S.Field>
-              <S.Label>{t('transfer_ownership_modal.new_owner')}</S.Label>
+            <p className={send.intro}>{t('transfer_ownership_modal.confirm_intro', { name: collection.name })}</p>
+            <div className={sell.field}>
+              <span className={sell.label}>{t('transfer_ownership_modal.new_owner')}</span>
               <RecipientLine address={newOwner} friends={friends} testId="transfer-confirm-owner" />
-            </S.Field>
-            <S.Note data-variant="warning" data-testid="transfer-ownership-warning">
+            </div>
+            <div className={sell.note} data-variant="warning" data-testid="transfer-ownership-warning">
               <WarningIcon aria-hidden />
               <p>{t('transfer_ownership_modal.warning')}</p>
-            </S.Note>
+            </div>
           </>
         )}
-      </S.Body>
+      </div>
 
-      <Sell.Footer>
+      <div className={sell.footer}>
         {step === 'details' ? (
           <Button type="button" variant="secondary" data-testid="transfer-cancel" onClick={onClose}>
             {t('sell_item_modal.cancel')}
@@ -168,7 +175,7 @@ export function TransferOwnershipModal({
             {t('transfer_ownership_modal.submit')}
           </Button>
         )}
-      </Sell.Footer>
+      </div>
     </Modal>
   )
 }

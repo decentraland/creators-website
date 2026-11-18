@@ -4,9 +4,11 @@ import { captureError } from '~/lib/monitoring'
 import { fetchContent, saveItem } from '~/lib/builder'
 import { withCatalystImageForRarity, withThumbnail, type BuiltItem } from '~/lib/itemFactory'
 import { IMAGE_PATH } from '~/lib/itemFiles'
+import { changesItemSize, guardItemSize, isItemTooBigError } from '~/lib/itemSize'
 import { type Item } from '~/lib/items'
 import { useNotifications } from '~/lib/notifications'
 import { useTranslation } from '~/intl'
+import { useItemSizeDeps } from './useItemSize'
 import { invalidateCollectionItems } from './usePublishCollection'
 
 export type SaveItemVariables = Partial<BuiltItem> & {
@@ -17,6 +19,10 @@ export type SaveItemVariables = Partial<BuiltItem> & {
   imageStale?: boolean
   /** The video hash before the edit, so a failed upload of a new video can restore it. */
   previousVideo?: string
+  /** The item as stored before the edit, so that a change of category that moves its size limit is checked too. */
+  previous?: Item
+  /** A save the app made on its own: it has its own event, so it is not counted as the user's `Save item`. */
+  background?: boolean
 }
 
 /** A rarity change that could not refresh the catalyst image, because the stored thumbnail could not be loaded. */
@@ -47,22 +53,34 @@ export async function buildSaveItem({ item, blobs, thumbnail, imageStale }: Save
   return { item, blobs: blobs ?? {} }
 }
 
-/** Saves an item together with any files the edit produced (thumbnail, video, replaced model). */
+/**
+ * Saves an item together with any files the edit produced (thumbnail, video, replaced model). A save that changes the
+ * item's files or its size limit and would leave it over that limit, thumbnail and rarity image included, is refused
+ * with an ItemFileError (`size_exceeded`) before anything is sent; other edits save an oversized item as it is.
+ */
 export function useSaveItem(address: string | undefined) {
   const queryClient = useQueryClient()
   const { t } = useTranslation()
   const showToast = useNotifications(state => state.showToast)
+  const sizeDeps = useItemSizeDeps()
   return useMutation({
     mutationFn: async (variables: SaveItemVariables) => {
       if (!address) throw new Error('Wallet disconnected')
       const built = await buildSaveItem(variables)
+      if (changesItemSize(built, variables.previous)) await guardItemSize(built, sizeDeps, 'save-item')
       if (wasImageRefreshSkipped(variables, built)) showToast(t('item_editor.image_refresh_skipped'), { type: 'warn' })
       return saveItem(address, built.item, built.blobs, { previousVideo: variables.previousVideo })
     },
-    onSuccess: item => {
-      track('Save item', { itemId: item.id })
+    onSuccess: (item, { background }) => {
+      if (!background) track('Save item', { itemId: item.id })
       if (item.collectionId) invalidateCollectionItems(queryClient, item.collectionId)
     },
-    onError: (error, { item }) => track('Save item error', { itemId: item.id, error: errorCode(error) })
+    onError: (error, { item, background }) => {
+      if (background) return
+      track('Save item error', {
+        itemId: item.id,
+        error: isItemTooBigError(error) ? 'size_exceeded' : errorCode(error)
+      })
+    }
   })
 }

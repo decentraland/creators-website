@@ -1,14 +1,16 @@
 import type { ReactNode } from 'react'
-import { Check as CheckIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material'
+import { CheckIcon, OpenInNewIcon } from '~/components/Icons'
 import successArt from '~/assets/sale-success.png'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
-import * as S from './SuccessModal.styles'
+import styles from './SuccessModal.module.css'
 
 type Props = {
   title: string
   description: ReactNode
+  /** A secondary line under the description. */
+  note?: ReactNode
   art?: string
   /** A way on from the success, shown before DONE. */
   action?: { label: string; onClick: () => void; testId: string; external?: boolean }
@@ -20,6 +22,7 @@ type Props = {
 export function SuccessModal({
   title,
   description,
+  note,
   art = successArt,
   action,
   onDone,
@@ -27,12 +30,19 @@ export function SuccessModal({
 }: Props) {
   const { t } = useTranslation()
   return (
-    <Modal title={title} onClose={onDone} hideTitle testId={`${testId}-modal`}>
-      <S.Wrap>
-        <S.Art src={art} alt="" />
-        <S.Heading data-testid={`${testId}-title`}>{title}</S.Heading>
-        <S.Text data-testid={`${testId}-description`}>{description}</S.Text>
-        <S.Actions>
+    <Modal title={title} onClose={onDone} hideTitle size="medium" testId={`${testId}-modal`}>
+      <div className={styles.wrap}>
+        <img className={styles.art} src={art} alt="" />
+        <h3 className={styles.heading} data-testid={`${testId}-title`}>
+          {title}
+        </h3>
+        <div className={styles.body}>
+          <p className={styles.text} data-testid={`${testId}-description`}>
+            {description}
+          </p>
+          {note}
+        </div>
+        <div className={styles.actions}>
           {action && (
             <Button type="button" variant="secondary" data-testid={action.testId} onClick={action.onClick}>
               {action.label}
@@ -43,8 +53,8 @@ export function SuccessModal({
             {t('success_modal.done')}
             <CheckIcon fontSize="small" />
           </Button>
-        </S.Actions>
-      </S.Wrap>
+        </div>
+      </div>
     </Modal>
   )
 }

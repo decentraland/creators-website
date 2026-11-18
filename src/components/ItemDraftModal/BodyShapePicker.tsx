@@ -1,9 +1,9 @@
 import { type KeyboardEvent, type ReactNode } from 'react'
-import { Female as FemaleIcon, Male as MaleIcon, Transgender as BothIcon } from '@mui/icons-material'
+import { FemaleIcon, MaleIcon, TransgenderIcon as BothIcon } from '~/components/Icons'
 import { Tooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
 import { BodyShapeType } from '~/lib/items'
-import * as S from './ItemDraftModal.styles'
+import styles from './ItemDraftModal.module.css'
 
 const OPTIONS: Array<{ value: BodyShapeType; icon: ReactNode }> = [
   { value: BodyShapeType.BOTH, icon: <BothIcon /> },
@@ -49,7 +49,12 @@ export function BodyShapePicker({
   }
 
   return (
-    <S.Segmented role="radiogroup" aria-label={t('add_items_modal.body_shape')} onKeyDown={onKeyDown}>
+    <div
+      className={styles.segmented}
+      role="radiogroup"
+      aria-label={t('add_items_modal.body_shape')}
+      onKeyDown={onKeyDown}
+    >
       {OPTIONS.map(({ value: option, icon }) => {
         const selected = option === value
         return (
@@ -59,7 +64,8 @@ export function BodyShapePicker({
             asChild
             testId={`${testIdPrefix}-${option}-tooltip`}
           >
-            <S.SegmentButton
+            <button
+              className={styles.segmentButton}
               type="button"
               role="radio"
               aria-disabled={locked || undefined}
@@ -73,10 +79,10 @@ export function BodyShapePicker({
             >
               {icon}
               {t(`add_items_modal.body_shape_option.${option}`)}
-            </S.SegmentButton>
+            </button>
           </Tooltip>
         )
       })}
-    </S.Segmented>
+    </div>
   )
 }

@@ -1,9 +1,12 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Button } from '~/components/Button'
 import { Confetti } from '~/components/Confetti'
 import { WarningIcon } from '~/components/Icons'
 import { Modal } from '~/components/Modal'
-import * as S from './ConfirmModal.styles'
+import { cx } from '~/lib/cx'
+import { useNotifications } from '~/lib/notifications'
+import styles from './ConfirmModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Action = {
   label: string
@@ -18,7 +21,7 @@ type Props = {
   art?: { src: string }
   /** Glyph shown instead of the warning one, for confirmations that aren't warnings. */
   icon?: ReactNode
-  /** Failure copy shown under the description after a rejected confirm. */
+  /** Failure copy of a rejected confirm, shown as an error toast so the dialog keeps its shape. */
   error?: string | null
   /** Extra content under the description, e.g. an error's technical details. */
   children?: ReactNode
@@ -30,6 +33,10 @@ type Props = {
   onClose: () => void
   cancel?: Action
   confirm?: Action
+  /** A wider dialog, for an illustrated notice with longer copy. */
+  size?: 'default' | 'medium'
+  /** Sizes the two actions to their labels' column and pushes them to the edges, instead of filling the row. */
+  spreadActions?: boolean
   /** Keeps a lone action full width, for a dialog that hides Cancel only while its request is open. */
   fillActions?: boolean
   testId: string
@@ -49,21 +56,49 @@ export function ConfirmModal({
   onClose,
   cancel,
   confirm,
+  size = 'default',
+  spreadActions = false,
   fillActions = false,
   testId
 }: Props) {
+  const showToast = useNotifications(state => state.showToast)
+  useEffect(() => {
+    if (error) showToast(error, { type: 'error' })
+  }, [error, showToast])
+
   return (
-    <Modal title={title} onClose={onClose} closeDisabled={busy} hideTitle showClose={showClose} testId={testId}>
+    <Modal
+      title={title}
+      size={size}
+      onClose={onClose}
+      closeDisabled={busy}
+      hideTitle
+      showClose={showClose}
+      testId={testId}
+    >
       {celebrate && <Confetti />}
-      <S.Wrap data-art={art ? 'image' : 'icon'}>
-        {art ? <S.Art src={art.src} alt="" /> : <S.IconWrap aria-hidden>{icon ?? <WarningIcon />}</S.IconWrap>}
-        <S.Heading data-testid={`${testId}-title`}>{title}</S.Heading>
-        <S.Body>
-          <S.Text data-testid={`${testId}-description`}>{description}</S.Text>
-          {error && <S.Text data-testid={`${testId}-error`}>{error}</S.Text>}
+      <div className={styles.wrap} data-art={art ? 'image' : 'icon'}>
+        {art ? (
+          <img className={styles.art} src={art.src} alt="" />
+        ) : (
+          <div className={styles.iconWrap} aria-hidden>
+            {icon ?? <WarningIcon />}
+          </div>
+        )}
+        <h3 className={styles.heading} data-testid={`${testId}-title`}>
+          {title}
+        </h3>
+        <div className={styles.body}>
+          <p className={styles.text} data-testid={`${testId}-description`}>
+            {description}
+          </p>
           {children}
-        </S.Body>
-        <S.Actions data-single={(!cancel || !confirm) && !fillActions ? '' : undefined}>
+        </div>
+        <div
+          className={cx(shared.modalActions, styles.actions)}
+          data-single={(!cancel || !confirm) && !fillActions ? '' : undefined}
+          data-spread={spreadActions && cancel && confirm ? '' : undefined}
+        >
           {cancel && (
             <Button
               type="button"
@@ -80,8 +115,8 @@ export function ConfirmModal({
               {confirm.label}
             </Button>
           )}
-        </S.Actions>
-      </S.Wrap>
+        </div>
+      </div>
     </Modal>
   )
 }

@@ -1,4 +1,4 @@
-import { ContractName, getContract } from 'decentraland-transactions'
+import { getCollectionContract } from '~/lib/chain/contracts'
 import { type ContractCall } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { isRefusedRequest } from '~/lib/builder'
@@ -27,7 +27,7 @@ export function matchesCollectionName(collection: Collection, typed: string): bo
 /** `transferCreatorship(address)` on the collection contract itself; the on-chain creator is the UI's owner. */
 export function buildTransferOwnershipCall(collection: Collection, newOwner: string, chainId: number): ContractCall {
   if (!collection.contractAddress) throw new SellItemError('not_published', 'The collection has no contract yet')
-  const contract = { ...getContract(ContractName.ERC721CollectionV2, chainId), address: collection.contractAddress }
+  const contract = getCollectionContract(chainId, collection.contractAddress)
   return { contract, method: 'transferCreatorship', args: [newOwner] }
 }
 

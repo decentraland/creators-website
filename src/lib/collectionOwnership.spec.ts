@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ContractName, getContract } from 'decentraland-transactions'
-import { encodeContractCall } from './auth/transactions'
+import { toTransaction } from '~/test/chain'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { BuilderServerError } from './builder'
 import { type Collection } from './collections'
 import {
@@ -50,10 +50,10 @@ describe('choosing the new owner', () => {
 describe('transferring', () => {
   it('calls transferCreatorship on the collection contract', () => {
     const call = buildTransferOwnershipCall(collection, OTHER, CHAIN_ID)
-    expect(call.contract.address).toBe(CONTRACT)
-    expect(call.method).toBe('transferCreatorship')
-    expect(call.args).toEqual([OTHER])
-    expect(encodeContractCall(call)).toMatch(/^0x[0-9a-f]+$/)
+    expect(toTransaction(call)).toEqual({
+      to: '0x00000000000000000000000000000000000000ee',
+      data: '0x6d2e4b1b00000000000000000000000000000000000000000000000000000000000000dd'
+    })
   })
 
   it('refuses a collection without a contract', () => {

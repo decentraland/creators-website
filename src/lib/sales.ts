@@ -2,9 +2,9 @@
 // off-chain marketplace becomes a minter of the collection contract) and signing the item's primary
 // order, priced in credits (USD-pegged MANA) or plain MANA. Ported from the legacy builder's
 // SellCollectionModal + PutForSaleOffchainModal.
-import { ethers } from 'ethers'
 import { Network, TradeAssetType, TradeType, type Trade, type TradeCreation } from '@dcl/schemas'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getCollectionContract, getContract } from '~/lib/chain/contracts'
+import { isAddress, maxUint256, parseEther, toHex, zeroAddress } from 'viem'
 import { type ContractCall, type ContractData } from '~/lib/auth'
 import { type Collection } from '~/lib/collections'
 import { getItemSales, type Item } from '~/lib/items'
@@ -20,7 +20,7 @@ import {
   type SignatureIndexes,
   type UnsignedTrade
 } from '~/lib/trades'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 
 // 1 credit = $0.10 = 1e17 USD wei (the shop's fixed peg; marketplace-server rounds up to whole credits).
 const USD_WEI_PER_CREDIT = 10n ** 17n
@@ -68,12 +68,9 @@ export function sanitizeManaInput(value: string): string {
 
 /** A typed MANA amount as wei, or null when it is empty or not a plain decimal number. */
 export function parseManaAmount(value: string): bigint | null {
-  if (!/^(\d+\.?\d*|\.\d+)$/.test(value)) return null
-  try {
-    return BigInt(ethers.utils.parseEther(value).toString())
-  } catch {
-    return null
-  }
+  // viem rounds digits past the 18th instead of refusing them.
+  if (!/^(\d+(\.\d{0,18})?|\.\d{1,18})$/.test(value)) return null
+  return parseEther(value)
 }
 
 /** The form's currency + typed amount as a price, or null while it is missing or out of bounds. */
@@ -130,8 +127,9 @@ export function formatManaAsUsd(manaWei: bigint, rate: bigint): string {
   return formatUsd(Number(usdCents) / 100)
 }
 
+/** A 0x address in one case, or mixed case with a valid checksum; callers lowercase it before use. */
 export function isValidAddress(value: string): boolean {
-  return ethers.utils.isAddress(value)
+  return isAddress(value) || /^0x[0-9A-F]{40}$/.test(value)
 }
 
 /** Dates are picked in the creator's local time and expire at the end of the chosen day. */
@@ -176,7 +174,7 @@ export function isSellingOnOlderMarketplace(collection: Collection, chainId: num
 /** `setMinters([marketplace], [true])` on the collection contract itself. */
 export function buildEnableSalesCall(collection: Collection, chainId: number): ContractCall {
   if (!collection.contractAddress) throw new SellItemError('not_published', 'The collection has no contract yet')
-  const contract = { ...getContract(ContractName.ERC721CollectionV2, chainId), address: collection.contractAddress }
+  const contract = getCollectionContract(chainId, collection.contractAddress)
   return { contract, method: 'setMinters', args: [[getOffchainMarketplaceContract(chainId).address], [true]] }
 }
 
@@ -187,15 +185,18 @@ export function withSalesEnabled(collection: Collection, chainId: number): Colle
   return { ...collection, minters: [...collection.minters, minter] }
 }
 
-export type SellFailureReason = 'rejected' | 'sold_out' | 'not_published' | 'not_listed' | 'generic'
+export type SellFailureReason = 'rejected' | 'wallet' | 'sold_out' | 'not_published' | 'not_listed' | 'generic'
 
 export class SellItemError extends Error {
   reason: SellFailureReason
+  /** The underlying failure, when this one wraps it. */
+  cause?: unknown
 
-  constructor(reason: SellFailureReason, message: string = reason) {
+  constructor(reason: SellFailureReason, message: string = reason, cause?: unknown) {
     super(message)
     this.name = 'SellItemError'
     this.reason = reason
+    this.cause = cause
   }
 }
 
@@ -203,6 +204,7 @@ export function toSellItemError(error: unknown): SellItemError {
   if (error instanceof SellItemError) return error
   const message = error instanceof Error ? error.message : String(error)
   if (isWalletRejection(error)) return new SellItemError('rejected', message)
+  if (isWalletStateError(error)) return new SellItemError('wallet', message, error)
   return new SellItemError('generic', message)
 }
 
@@ -275,7 +277,7 @@ function toReceivedAsset(price: SalePrice, mana: string, beneficiary: string): U
         contractAddress: mana,
         amount: '0',
         extra: '',
-        beneficiary: ethers.constants.AddressZero
+        beneficiary: zeroAddress
       }
     case 'mana':
       return {
@@ -309,7 +311,7 @@ export function toListing(itemId: string, tradeId: string, price: SalePrice): It
 }
 
 export function randomSalt(): string {
-  return ethers.utils.hexlify(ethers.utils.randomBytes(32))
+  return toHex(crypto.getRandomValues(new Uint8Array(32)))
 }
 
 /** The chain reads, wallet signature and server call the sequence needs, so it can run against fakes in tests. */
@@ -319,13 +321,14 @@ export type SellItemDeps = {
   createTrade: (trade: TradeCreation) => Promise<string>
   /** The wallet prompt is over; the order is being stored. */
   onSigned?: () => void
+  randomSalt?: () => string
 }
 
 /** Reads the marketplace's signature indexes, signs the order, stores it. Answers the listing as the collection page shows it. */
 export async function sellItem(params: SellItemParams, deps: SellItemDeps): Promise<ItemListing> {
   try {
     const indexes = await deps.fetchSignatureIndexes(params.address, params.chainId)
-    const trade = buildItemOrder(params, indexes, randomSalt())
+    const trade = buildItemOrder(params, indexes, (deps.randomSalt ?? randomSalt)())
     const signature = await deps.signTrade(trade)
     deps.onSigned?.()
     const tradeId = await deps.createTrade({ ...trade, signature })
@@ -396,7 +399,7 @@ export type ListingTerms = { beneficiary: string; expiresAt: number }
 export function getListingTerms(trade: Trade, fallbackBeneficiary: string): ListingTerms {
   const beneficiary = trade.received[0]?.beneficiary
   return {
-    beneficiary: beneficiary && beneficiary !== ethers.constants.AddressZero ? beneficiary : fallbackBeneficiary,
+    beneficiary: beneficiary && beneficiary !== zeroAddress ? beneficiary : fallbackBeneficiary,
     expiresAt: trade.checks.expiration
   }
 }
@@ -473,6 +476,16 @@ export async function updatePrice(params: UpdatePriceParams, deps: UpdatePriceDe
 /** What `editItemsData` must carry over untouched when only the price changes. */
 export type StoreItemData = { beneficiary: string; metadata: string }
 
+type StoreItemOutputs = readonly [
+  rarity: string,
+  maxSupply: bigint,
+  totalSupply: bigint,
+  price: bigint,
+  beneficiary: string,
+  metadata: string,
+  contentHash: string
+]
+
 /** The item's current on-chain data, so delisting rewrites nothing but the price. */
 export async function readStoreItem(
   collection: Collection,
@@ -482,9 +495,9 @@ export async function readStoreItem(
 ): Promise<StoreItemData> {
   if (!collection.contractAddress || !item.tokenId)
     throw new SellItemError('not_published', `Item "${item.id}" is not published`)
-  const contract = { ...getContract(ContractName.ERC721CollectionV2, chainId), address: collection.contractAddress }
-  const data = await read<{ beneficiary: string; metadata: string }>(contract, 'items', [item.tokenId])
-  return { beneficiary: data.beneficiary, metadata: data.metadata }
+  const contract = getCollectionContract(chainId, collection.contractAddress)
+  const [, , , , beneficiary, metadata] = await read<StoreItemOutputs>(contract, 'items', [item.tokenId])
+  return { beneficiary, metadata }
 }
 
 /**
@@ -499,11 +512,11 @@ export function buildStoreDelistCall(
 ): ContractCall {
   if (!collection.contractAddress || !item.tokenId)
     throw new SellItemError('not_published', `Item "${item.id}" is not published`)
-  const contract = { ...getContract(ContractName.ERC721CollectionV2, chainId), address: collection.contractAddress }
+  const contract = getCollectionContract(chainId, collection.contractAddress)
   return {
     contract,
     method: 'editItemsData',
-    args: [[item.tokenId], [ethers.constants.MaxUint256.toString()], [current.beneficiary], [current.metadata]]
+    args: [[item.tokenId], [maxUint256.toString()], [current.beneficiary], [current.metadata]]
   }
 }
 

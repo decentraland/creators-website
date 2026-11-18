@@ -1,19 +1,21 @@
 import { useState } from 'react'
-import { Add as AddIcon } from '@mui/icons-material'
+import { AddIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
-import { type Collection } from '~/lib/collections'
 import { getRoleAddressError, type RoleKind } from '~/lib/collectionRoles'
 import { type Friend } from '~/lib/friends'
 import { getMaticChainId } from '~/lib/publishCollection'
 import { Button } from '~/components/Button'
 import { Modal } from '~/components/Modal'
 import { BeneficiaryInput } from '../SellItemFlow/BeneficiaryInput'
-import * as Sell from '../SellItemFlow/SellItemModal.styles'
-import * as S from './ManageRolesModal.styles'
+import { cx } from '~/lib/cx'
+import sell from '../SellItemFlow/SellItemModal.module.css'
+import send from '../SendItemsFlow/SendItemsModal.module.css'
+import styles from './ManageRolesModal.module.css'
 
 type Props = {
-  collection: Collection
   kind: RoleKind
+  /** The signed-in owner's address, lowercased: offered as "You" so they can keep a role after a transfer. */
+  self: string
   /** The draft list, lowercased. */
   addresses: string[]
   friends: Friend[] | undefined
@@ -30,8 +32,8 @@ type Props = {
 
 /** The role's address list: one chip per holder, a picker row to add another, SAVE CHANGES once the list differs. */
 export function ManageRolesModal({
-  collection,
   kind,
+  self,
   addresses,
   friends,
   isLoadingFriends,
@@ -47,7 +49,7 @@ export function ManageRolesModal({
   const showInput = addresses.length === 0 || adding
 
   function rejection(address: string): string | null {
-    const error = getRoleAddressError(collection, kind, addresses, address, getMaticChainId())
+    const error = getRoleAddressError(kind, addresses, address, getMaticChainId())
     return error ? t(`manage_roles_modal.${error}`) : null
   }
 
@@ -59,27 +61,33 @@ export function ManageRolesModal({
       compact
       testId="manage-roles-modal"
     >
-      <Sell.Divider />
-      <S.Body data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
-        <S.Description data-testid="manage-roles-description">
+      <hr className={sell.divider} />
+      <div
+        className={send.body}
+        data-busy={busy || undefined}
+        aria-busy={busy || undefined}
+        {...(busy ? { inert: '' } : {})}
+      >
+        <p className={styles.description} data-testid="manage-roles-description">
           {t(`manage_roles_modal.${kind}.description`)}
-        </S.Description>
-        <S.List>
+        </p>
+        <ul className={styles.list}>
           {addresses.map((address, index) => (
-            <S.Row key={address} data-testid="role-row">
+            <li className={styles.row} key={address} data-testid="role-row" data-address={address}>
               <BeneficiaryInput
                 value={address}
                 onChange={() => onRemove(address)}
                 friends={friends}
+                self={self}
                 isLoadingFriends={isLoadingFriends}
                 clearLabel={t(`manage_roles_modal.${kind}.remove`)}
                 variant="compact"
                 testId={`role-${index + 1}`}
               />
-            </S.Row>
+            </li>
           ))}
           {showInput && (
-            <S.Row>
+            <li className={styles.row}>
               <BeneficiaryInput
                 value=""
                 onChange={address => {
@@ -87,21 +95,28 @@ export function ManageRolesModal({
                   setAdding(false)
                 }}
                 friends={friends}
+                self={self}
                 isLoadingFriends={isLoadingFriends}
                 placeholder={t(`manage_roles_modal.${kind}.placeholder`)}
                 duplicateError={rejection}
                 testId="role-new"
               />
-            </S.Row>
+            </li>
           )}
-        </S.List>
-        <S.LinkButton type="button" disabled={showInput} data-testid="role-add" onClick={() => setAdding(true)}>
+        </ul>
+        <button
+          className={cx(send.linkButton, styles.linkButton)}
+          type="button"
+          disabled={showInput}
+          data-testid="role-add"
+          onClick={() => setAdding(true)}
+        >
           <AddIcon />
           {t(`manage_roles_modal.${kind}.add`)}
-        </S.LinkButton>
-      </S.Body>
+        </button>
+      </div>
 
-      <Sell.Footer>
+      <div className={sell.footer}>
         <Button type="button" variant="secondary" disabled={busy} data-testid="role-cancel" onClick={onClose}>
           {t('sell_item_modal.cancel')}
         </Button>
@@ -115,7 +130,7 @@ export function ManageRolesModal({
         >
           {t('manage_roles_modal.save')}
         </Button>
-      </Sell.Footer>
+      </div>
     </Modal>
   )
 }

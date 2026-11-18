@@ -2,11 +2,10 @@ import { type CSSProperties } from 'react'
 import { Rarity } from '@dcl/schemas'
 import { useTranslation } from '~/intl'
 import { formatRarityLabel, isRarity } from '~/lib/rarities'
-import { theme } from '~/styles/theme'
-import * as S from './RarityPill.styles'
+import styles from './RarityPill.module.css'
 
 const LIGHT_OVERRIDES: Partial<Record<string, string>> = {
-  legendary: theme.colors.rarityLegendaryLight
+  legendary: 'var(--color-rarity-legendary-light)'
 }
 
 type Props = {
@@ -30,8 +29,8 @@ export function RarityPill({ rarity, showSupply = true, size = 'default', testId
   const label = known ? t(`collection_detail_page.rarity.${rarity}`) : rarity
 
   return (
-    <S.Pill data-testid={testId} data-rarity={rarity} data-size={size} style={style}>
+    <span className={styles.pill} data-testid={testId} data-rarity={rarity} data-size={size} style={style}>
       {showSupply ? formatRarityLabel(label, rarity) : label}
-    </S.Pill>
+    </span>
   )
 }

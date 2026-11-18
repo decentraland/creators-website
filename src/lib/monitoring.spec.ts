@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { TransactionExecutionError, UnknownRpcError } from 'viem'
 import {
   captureError,
   isLocalhost,
@@ -85,6 +86,13 @@ describe('rpcFactsFrom', () => {
     expect(rpcFactsFrom('a string')).toEqual({})
     expect(rpcFactsFrom(null)).toEqual({})
   })
+
+  it("reads the wallet's own code and HTTP status from under a chain library's wrappers", () => {
+    const wallet = Object.assign(new Error('Unauthorized'), { code: -32099, data: { httpStatus: 401 } })
+    const wrapped = new TransactionExecutionError(new UnknownRpcError(wallet), { account: null })
+    expect(rpcFactsFrom(wrapped)).toEqual({ rpc_code: -32099, http_status: 401 })
+    expect(rpcFactsFrom({ code: 4001, message: 'User rejected' })).toEqual({ rpc_code: 4001 })
+  })
 })
 
 describe('scrubEvent', () => {
@@ -116,6 +124,7 @@ describe('scrubEvent', () => {
           span_id: 'span-1',
           trace_id: 'trace-1',
           start_timestamp: 0,
+          status: 'ok',
           description: `GET ${HEX32}`,
           data: { 'http.url': `https://x.test/?k=${HEX32}` }
         }

@@ -3,7 +3,7 @@ import { useTranslation } from '~/intl'
 import { type LinkedPublishError, type LinkedPublishFailureReason } from '~/lib/publishLinkedItems'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
-import * as S from './LinkedPublishRow.styles'
+import styles from './LinkedPublishRow.module.css'
 import { PublishSuccessModal } from '../../PublishCollectionModal/PublishSuccessModal'
 
 type Props = {
@@ -32,12 +32,15 @@ const UNRETRIABLE: LinkedPublishFailureReason[] = ['pending_review']
 export function LinkedPublishOutcomeModal({ outcome, onClose, onRetry, onForgetPayment }: Props) {
   const { t } = useTranslation()
   if (outcome === 'success') return <PublishSuccessModal onDone={onClose} />
-  const reason = DESCRIBED.includes(outcome.reason) ? outcome.reason : 'generic'
+  const description =
+    outcome.reason === 'wallet'
+      ? 'wallet_error.wrong_account'
+      : `publish_linked_modal.error.${DESCRIBED.includes(outcome.reason) ? outcome.reason : 'generic'}`
   const canRetry = !UNRETRIABLE.includes(outcome.reason)
   return (
     <ConfirmModal
       title={t('publish_linked_modal.error.title')}
-      description={t(`publish_linked_modal.error.${reason}`)}
+      description={t(description)}
       art={{ src: errorArt }}
       onClose={onClose}
       cancel={{ label: t('publish_collection_modal.error.cancel'), onClick: onClose, testId: 'publish-error-cancel' }}
@@ -49,8 +52,8 @@ export function LinkedPublishOutcomeModal({ outcome, onClose, onRetry, onForgetP
       testId="publish-linked-error-modal"
     >
       {outcome.reason === 'payment_pending' && onForgetPayment && (
-        <S.Forget>
-          <S.ForgetText>{t('publish_linked_modal.error.forget_payment_note')}</S.ForgetText>
+        <div className={styles.forget}>
+          <p className={styles.forgetText}>{t('publish_linked_modal.error.forget_payment_note')}</p>
           <Button
             type="button"
             variant="secondary"
@@ -60,7 +63,7 @@ export function LinkedPublishOutcomeModal({ outcome, onClose, onRetry, onForgetP
           >
             {t('publish_linked_modal.error.forget_payment')}
           </Button>
-        </S.Forget>
+        </div>
       )}
     </ConfirmModal>
   )

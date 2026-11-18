@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { type Collection } from './collections'
 import { ItemType, type Item } from './items'
 import { type ItemListing } from './listings'

@@ -305,9 +305,9 @@ export function useCreateDiscount(session: Session | null) {
             {
               readIndexes: readSignatureIndexes,
               // The coupon is posted as `session.address`: signed by another account, the server would refuse it.
-              signTypedData: async (domain, types, value) => {
+              signTypedData: async (domain, types, primaryType, value) => {
                 await requireAccount(session)
-                return signTypedData(session, domain, types, value)
+                return signTypedData(session, domain, types, primaryType, value)
               },
               ...store,
               onSigned,
@@ -368,7 +368,7 @@ export function useEndDiscount(session: Session | null) {
         )
       }
       return endDiscount(discount, {
-        sendTransaction: call => sendWalletTransaction(session, call),
+        sendTransaction: (call, onSent) => sendWalletTransaction(session, call, onSent),
         waitForTransaction: hash => waitForTransaction(discount.chainId, hash, END_TIMEOUT_MS),
         onSigned,
         onBroadcast: (txHash, nonce) =>

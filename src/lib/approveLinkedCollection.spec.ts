@@ -428,7 +428,7 @@ describe('setLinkedMerkleRoot', () => {
 function deployDeps(overrides: Partial<LinkedDeployDeps> = {}): LinkedDeployDeps {
   return {
     fetchContent: vi.fn(async (hash: string) => new Blob([hash])),
-    sign: vi.fn(() => [{ type: 'SIGNER', payload: '0xme' }]),
+    sign: vi.fn(async () => [{ type: 'SIGNER', payload: '0xme' }]),
     fetchAvailableContent: vi.fn(async () => new Set<string>()),
     deployEntity: vi.fn(async () => undefined),
     fetchItem: vi.fn(async (id: string) => served.find(target => target.id === id)!),
@@ -527,7 +527,7 @@ describe('deployLinkedItems', () => {
     let finished = 0
     const deps = deployDeps({
       concurrency: 2,
-      sign: vi.fn(() => (++signs === 1 ? null : [{ type: 'SIGNER', payload: '0xme' }])),
+      sign: vi.fn(async () => (++signs === 1 ? null : [{ type: 'SIGNER', payload: '0xme' }])),
       deployEntity: vi.fn(async () => {
         await new Promise(resolve => setTimeout(resolve, 5))
         finished++
@@ -553,7 +553,7 @@ describe('deployLinkedItems', () => {
   })
 
   it('stops at once when the session cannot sign', async () => {
-    const deps = deployDeps({ sign: vi.fn(() => null) })
+    const deps = deployDeps({ sign: vi.fn(async () => null) })
     await expect(deployLinkedItems(collection, planFor([item('1')]), deps)).rejects.toBeInstanceOf(ApprovalError)
     expect(deps.deployEntity).not.toHaveBeenCalled()
   })

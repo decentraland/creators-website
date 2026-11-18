@@ -2,7 +2,7 @@
 // first rarity's price; the wire prices are wei strings (USD wei from the graph, MANA wei from the
 // oracle). Credits are the shop's USD credits: 1 credit = 10 US cents, always rounded up, matching
 // credits-server's `authorize-publication` rounding.
-import { ethers } from 'ethers'
+import { formatEther } from 'viem'
 import { type BlockchainRarity } from './rarities'
 
 export const USD_CENTS_PER_CREDIT = 10
@@ -58,7 +58,7 @@ export function getPublicationFee(rarities: BlockchainRarity[], itemCount: numbe
 
 /** MANA wei → a compact decimal string: whole numbers stay whole, fractions keep up to 2 decimals. */
 export function formatMana(wei: bigint, maxDecimals = 2): string {
-  const value = Number(ethers.utils.formatEther(wei))
+  const value = Number(formatEther(wei))
   return value.toLocaleString('en-US', { maximumFractionDigits: maxDecimals })
 }
 

@@ -10,25 +10,24 @@ type Listener = (...args: unknown[]) => void
 type SendImpl = (method: string, params?: unknown[]) => Promise<unknown>
 
 /** An injected wallet whose JSON-RPC answers come from `send`, seeded on `chain` at sign-in. */
-function makeSession(send: SendImpl, chain = 80002) {
+function makeSession(sendImpl: SendImpl, chain = 80002) {
   const listeners: Record<string, Listener[]> = {}
+  const send = vi.fn(sendImpl)
   const session = {
     address: '0xabc0000000000000000000000000000000000abc',
     chainId: chain,
     providerType: 'injected',
-    web3Provider: {
-      send: vi.fn(send),
-      provider: {
-        on: (e: string, cb: Listener) => {
-          listeners[e] = [...(listeners[e] ?? []), cb]
-        },
-        removeListener: (e: string, cb: Listener) => {
-          listeners[e] = (listeners[e] ?? []).filter(l => l !== cb)
-        }
+    provider: {
+      request: ({ method, params }: { method: string; params?: unknown[] }) => send(method, params),
+      on: (e: string, cb: Listener) => {
+        listeners[e] = [...(listeners[e] ?? []), cb]
+      },
+      removeListener: (e: string, cb: Listener) => {
+        listeners[e] = (listeners[e] ?? []).filter(l => l !== cb)
       }
     }
   } as unknown as Session
-  return { session, listeners, send: session.web3Provider.send as unknown as ReturnType<typeof vi.fn> }
+  return { session, listeners, send }
 }
 
 beforeEach(() => {

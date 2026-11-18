@@ -1,6 +1,7 @@
 // The external NFT contract a linked collection is tied to: address input helpers and the on-chain ERC-165 check
 // the legacy create modal ran, fixed to probe the ERC-721 interface id (legacy probed ERC-165's own id).
 import { type ContractNetwork } from '@dcl/schemas'
+import { parseAbi } from 'viem'
 import { readContract } from '~/lib/auth'
 import { BuilderServerError } from '~/lib/builder'
 import { LINKED_CONTRACT_CHAIN_IDS, LINKED_CONTRACT_IN_USE_ERROR } from './thirdParty'
@@ -20,15 +21,7 @@ export function isAddressBeingTyped(value: string): boolean {
 export const ERC721_INTERFACE_ID = '0x80ac58cd'
 export const ERC1155_INTERFACE_ID = '0xd9b67a26'
 
-const ERC165_ABI = [
-  {
-    inputs: [{ internalType: 'bytes4', name: 'interfaceId', type: 'bytes4' }],
-    name: 'supportsInterface',
-    outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
-    stateMutability: 'view',
-    type: 'function'
-  }
-]
+const ERC165_ABI = parseAbi(['function supportsInterface(bytes4 interfaceId) view returns (bool)'])
 
 export type LinkedContractCheck = 'ok' | 'not_nft' | 'error'
 

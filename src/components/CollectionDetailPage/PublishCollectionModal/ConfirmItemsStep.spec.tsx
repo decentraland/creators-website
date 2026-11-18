@@ -4,7 +4,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TranslationProvider } from '~/intl'
-import { deleteItem, fetchContent, fetchItemContents, saveItem } from '~/lib/builder'
+import { deleteItem, fetchContent, fetchContentSize, fetchItemContents, saveItem } from '~/lib/builder'
 import { type ThumbnailPatch } from '~/components/ThumbnailModal'
 import { type Collection } from '~/lib/collections'
 import { ItemType, type Item, BODY_SHAPE_MALE } from '~/lib/items'
@@ -15,8 +15,12 @@ vi.mock('~/lib/builder', async importOriginal => ({
   saveItem: vi.fn(),
   deleteItem: vi.fn(),
   fetchContent: vi.fn(),
+  fetchContentSize: vi.fn(),
   fetchItemContents: vi.fn()
 }))
+
+// Stored file sizes by content hash; anything else is a small file.
+const STORED_SIZES: Record<string, number> = { Qmmodel: 2_800_000, Qmthumb: 200_000, Qmimage: 40_000 }
 
 // The real editor renders a WearablePreview iframe; stand in with a button that hands back a fixed PNG.
 const NEW_THUMBNAIL = new Blob(['png'], { type: 'image/png' })
@@ -65,7 +69,7 @@ function makeItem(id: string, name: string): Item {
       category: 'upper_body',
       representations: [{ bodyShapes: [BODY_SHAPE_MALE], mainFile: 'm.glb', contents: ['m.glb'] }]
     },
-    contents: { 'm.glb': 'Qmmodel', 'thumbnail.png': 'Qmthumb' },
+    contents: { 'm.glb': 'Qmmodel', 'thumbnail.png': 'Qmthumb', 'image.png': 'Qmimage' },
     createdAt: 1,
     updatedAt: 1
   }
@@ -86,7 +90,7 @@ const collection: Collection = {
   updatedAt: 1
 }
 
-function renderStep(list = items, address = ADDRESS) {
+function renderStep(list = items, address = ADDRESS, readOnly = false) {
   const onConfirm = vi.fn()
   const onBack = vi.fn()
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -100,6 +104,7 @@ function renderStep(list = items, address = ADDRESS) {
       address={address}
       collection={collection}
       items={list}
+      readOnly={readOnly}
       onBusyChange={vi.fn()}
       onBack={onBack}
       onConfirm={onConfirm}
@@ -114,6 +119,8 @@ beforeEach(() => {
   vi.mocked(deleteItem).mockReset()
   vi.mocked(fetchItemContents).mockReset()
   vi.mocked(fetchContent).mockReset()
+  vi.mocked(fetchContentSize).mockReset()
+  vi.mocked(fetchContentSize).mockImplementation(async hash => STORED_SIZES[hash] ?? 1_000)
 })
 
 describe('ConfirmItemsStep', () => {
@@ -130,6 +137,21 @@ describe('ConfirmItemsStep', () => {
     await userEvent.click(screen.getByTestId('publish-items-accept'))
     await userEvent.click(confirm)
     expect(onConfirm).toHaveBeenCalled()
+  })
+
+  it('refuses a row edit that would take the item over its limit, with the reason', async () => {
+    vi.mocked(saveItem).mockImplementation(async (_address, item) => item)
+    // The new rarity image leaves no room: 2,800,000 + 200,000 + 200,000 bytes.
+    vi.mocked(fetchContent).mockResolvedValue(new Blob([new Uint8Array(200_000)], { type: 'image/png' }))
+    renderStep()
+    const row = screen.getAllByTestId('publish-item-row')[0]
+    await userEvent.click(within(row).getByTestId('publish-item-edit'))
+    await userEvent.click(within(row).getByTestId('rarity-select'))
+    await userEvent.click(screen.getByTestId('rarity-select-option-epic'))
+    await userEvent.click(within(row).getByTestId('publish-item-save'))
+
+    expect(await within(row).findByTestId('publish-item-error')).toHaveTextContent('over the 3.00 MB limit')
+    expect(saveItem).not.toHaveBeenCalled()
   })
 
   it('saves an edited name and rarity as soon as the check button is clicked', async () => {
@@ -188,6 +210,17 @@ describe('ConfirmItemsStep', () => {
   it('never offers to delete the last item', () => {
     renderStep([items[0]])
     expect(screen.queryByTestId('publish-item-delete')).not.toBeInTheDocument()
+  })
+
+  it('only confirms the items of a collection locked by a publish: no actions column', async () => {
+    const { onConfirm } = renderStep(items, ADDRESS, true)
+    expect(screen.getAllByTestId('publish-item-row')).toHaveLength(2)
+    expect(screen.queryByTestId('publish-item-edit')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('publish-items-actions-column')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('publish-item-actions')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('publish-items-accept'))
+    await userEvent.click(screen.getByTestId('publish-items-confirm'))
+    expect(onConfirm).toHaveBeenCalled()
   })
 
   it('cannot continue with no items', async () => {

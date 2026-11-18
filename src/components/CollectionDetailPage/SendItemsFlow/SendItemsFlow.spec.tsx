@@ -5,10 +5,11 @@ import { ProviderType } from '@dcl/schemas'
 import { type Item } from '~/lib/items'
 import { type Transfer } from '~/lib/mint'
 import { useNotifications } from '~/lib/notifications'
+import { WrongAccountError } from '~/lib/walletErrors'
 import { track } from '~/lib/analytics'
 import { Toasts } from '~/components/Toasts'
 import { SendItemsFlow } from './SendItemsFlow'
-import { FRIEND, Providers, collection, item, makeSession } from '../SellItemFlow/testUtils'
+import { ADDRESS, FRIEND, Providers, collection, item, makeSession } from '../SellItemFlow/testUtils'
 
 type Callbacks = { onSuccess?: (result: unknown) => void; onError?: (error: unknown) => void }
 type Variables = { transfers: Transfer[]; onSigned?: () => void }
@@ -367,6 +368,18 @@ describe('SendItemsFlow', () => {
     await userEvent.click(screen.getByTestId('send-submit'))
     await act(async () => last(send.mutate)[1].onError?.(new Error('reverted')))
     expect(screen.getByTestId('sale-error-modal-title')).toHaveTextContent(/send your items/i)
+    await userEvent.click(screen.getByTestId('sale-error-retry'))
+    expect(screen.getByTestId('send-summary')).toHaveTextContent('1 Recipient - 1 Item - 1 Copy')
+  })
+
+  it('asks to switch the wallet back when it sits on another account, keeping the send for a retry', async () => {
+    renderFlow()
+    await addRecipient(1, FRIEND)
+    await userEvent.click(screen.getByTestId('transfer-1-item-i1-check'))
+    await userEvent.click(screen.getByTestId('send-continue'))
+    await userEvent.click(screen.getByTestId('send-submit'))
+    await act(async () => last(send.mutate)[1].onError?.(new WrongAccountError(ADDRESS, FRIEND)))
+    expect(screen.getByTestId('sale-error-modal-description')).toHaveTextContent(/switch it back to the account/i)
     await userEvent.click(screen.getByTestId('sale-error-retry'))
     expect(screen.getByTestId('send-summary')).toHaveTextContent('1 Recipient - 1 Item - 1 Copy')
   })

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Add as AddIcon, Close as CloseIcon, Remove as RemoveIcon } from '@mui/icons-material'
+import { AddIcon, CloseIcon, RemoveIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { getContentsStorageUrl } from '~/lib/builder'
@@ -17,7 +17,7 @@ import { useNotifications } from '~/lib/notifications'
 import { Checkbox } from '~/components/Checkbox'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { BeneficiaryInput } from '../SellItemFlow/BeneficiaryInput'
-import * as S from './SendItemsModal.styles'
+import styles from './SendItemsModal.module.css'
 
 type Props = {
   collectionId: string
@@ -93,25 +93,26 @@ export function TransferCard({
   }
 
   return (
-    <S.Transfer data-testid={testId}>
-      <S.TransferHead>
+    <section className={styles.transfer} data-testid={testId}>
+      <div className={styles.transferHead}>
         {t('send_items_modal.transfer', { n: index + 1 })}
         {onRemove && (
-          <S.RemoveTransfer
+          <button
+            className={styles.removeTransfer}
             type="button"
             aria-label={t('send_items_modal.remove_transfer')}
             data-testid={`${testId}-remove`}
             onClick={onRemove}
           >
             <CloseIcon fontSize="small" />
-          </S.RemoveTransfer>
+          </button>
         )}
-      </S.TransferHead>
+      </div>
 
-      <S.Recipients>
+      <ol className={styles.recipients}>
         {transfer.recipients.map((address, i) => (
-          <S.Recipient key={address}>
-            <S.Index>{i + 1}</S.Index>
+          <li className={styles.recipient} key={address}>
+            <span className={styles.index}>{i + 1}</span>
             <BeneficiaryInput
               value={address}
               onChange={() => setRecipients(transfer.recipients.filter(other => other !== address))}
@@ -121,11 +122,11 @@ export function TransferCard({
               variant="compact"
               testId={`${testId}-recipient`}
             />
-          </S.Recipient>
+          </li>
         ))}
         {showInput && (
-          <S.Recipient>
-            <S.Index>{transfer.recipients.length + 1}</S.Index>
+          <li className={styles.recipient}>
+            <span className={styles.index}>{transfer.recipients.length + 1}</span>
             <BeneficiaryInput
               value=""
               onChange={address => {
@@ -141,12 +142,13 @@ export function TransferCard({
               onChangeMany={addRecipients}
               testId={`${testId}-recipient`}
             />
-          </S.Recipient>
+          </li>
         )}
-      </S.Recipients>
-      <S.RecipientActions>
+      </ol>
+      <div className={styles.recipientActions}>
         {!full && (
-          <S.LinkButton
+          <button
+            className={styles.linkButton}
             type="button"
             disabled={showInput}
             data-testid={`${testId}-add-recipient`}
@@ -154,10 +156,11 @@ export function TransferCard({
           >
             <AddIcon />
             {t('send_items_modal.add_recipient')}
-          </S.LinkButton>
+          </button>
         )}
         {transfer.recipients.length > 1 && (
-          <S.LinkButton
+          <button
+            className={styles.linkButton}
             type="button"
             data-testid={`${testId}-clear-recipients`}
             onClick={() => {
@@ -167,12 +170,14 @@ export function TransferCard({
           >
             <CloseIcon />
             {t('send_items_modal.clear_recipients')}
-          </S.LinkButton>
+          </button>
         )}
-      </S.RecipientActions>
+      </div>
 
-      {transfer.recipients.length > 0 && <S.Label>{t('send_items_modal.items_for_recipient')}</S.Label>}
-      <S.Items>
+      {transfer.recipients.length > 0 && (
+        <span className={styles.label}>{t('send_items_modal.items_for_recipient')}</span>
+      )}
+      <ul className={styles.items}>
         {items.map(item => {
           const amount = transfer.amounts[item.id] ?? 0
           const stock = getStock(item)
@@ -181,31 +186,38 @@ export function TransferCard({
           const remaining = stock.available - allocatedElsewhere(transfers, item.id)
           const thumbnailHash = item.contents[item.thumbnail]
           return (
-            <S.ItemRow key={item.id} data-disabled={soldOut || undefined} data-testid={`${testId}-item-${item.id}`}>
+            <li
+              className={styles.itemRow}
+              key={item.id}
+              data-disabled={soldOut || undefined}
+              data-testid={`${testId}-item-${item.id}`}
+            >
               <Checkbox
                 checked={amount > 0}
                 disabled={soldOut || (amount === 0 && max === 0)}
                 onChange={checked => setAmount(item.id, checked ? 1 : 0)}
                 testId={`${testId}-item-${item.id}-check`}
               >
-                <S.SrOnly>{t('send_items_modal.select_item', { name: item.name })}</S.SrOnly>
+                <span className={styles.srOnly}>{t('send_items_modal.select_item', { name: item.name })}</span>
               </Checkbox>
-              <S.Thumb>
+              <div className={styles.thumb}>
                 <ItemThumbnail
                   src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null}
                   rarity={item.rarity}
                   testId={`${testId}-item-${item.id}-thumb`}
                 />
-              </S.Thumb>
-              <S.ItemText>
-                <S.ItemName title={item.name}>{item.name}</S.ItemName>
-                <S.Label data-testid={`${testId}-item-${item.id}-stock`}>
+              </div>
+              <div className={styles.itemText}>
+                <span className={styles.itemName} title={item.name}>
+                  {item.name}
+                </span>
+                <span className={styles.label} data-testid={`${testId}-item-${item.id}-stock`}>
                   {soldOut
                     ? t('send_items_modal.sold_out')
                     : t('send_items_modal.available', { available: remaining, total: stock.total })}
-                </S.Label>
-              </S.ItemText>
-              <S.Stepper>
+                </span>
+              </div>
+              <div className={styles.stepper}>
                 <button
                   type="button"
                   aria-label={t('send_items_modal.decrease', { name: item.name })}
@@ -232,12 +244,12 @@ export function TransferCard({
                 >
                   <AddIcon />
                 </button>
-              </S.Stepper>
-            </S.ItemRow>
+              </div>
+            </li>
           )
         })}
-      </S.Items>
-    </S.Transfer>
+      </ul>
+    </section>
   )
 }
 

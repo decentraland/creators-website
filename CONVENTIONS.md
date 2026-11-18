@@ -12,16 +12,16 @@ There is no separate `pages/` folder — page components live in `src/components
 
 ## Architecture: host-portability seams (hard rules)
 
-The app is a standalone web app today. In the future it may also be embedded inside the creator-hub Electron app — rendered in an iframe and talking to the host over a two-way postMessage/`@dcl/mini-rpc` channel, the same pattern creator-hub uses for `@dcl/inspector`. We build **none** of that now (no RPC layer, no host adapter, no electron-mode flag). Instead, these four seams stay clean so a future embed is a bounded integration instead of a rewrite:
+The app is a standalone web app today. In the future it may also be embedded inside the creator-hub Electron app — rendered in an iframe and talking to the host over a two-way postMessage/`@dcl/mini-rpc` channel, the same pattern creator-hub uses for `@dcl/inspector`. We build **none** of that now (no RPC layer, no host adapter, no electron-mode flag). Instead, these seams stay clean so a future embed is a bounded integration instead of a rewrite:
 
 ### 1. Auth is a sealed module
 
 Only `src/lib/auth/` (and the wallet zustand store it feeds) may import `decentraland-connect`, `@dcl/single-sign-on-client`, or `@dcl/crypto`, or hold an EIP-1193 provider. The rest of the app consumes:
 
 - the wallet store (address, connection state), and
-- `~/lib/auth` helpers: `getIdentity()` (AuthChain identity) and `signedFetch()`.
+- `~/lib/auth` helpers: `signedFetch()` and `signWithIdentity()` (AuthChain, both async), and the chain calls (`readContract`, `sendContractTransaction`, `signTypedData`, …), which load viem on first use.
 
-Every builder-server client in `lib/` signs requests through that single chokepoint — never ad-hoc signing in components or hooks. The interface stays **async and provider-shaped**: where the identity comes from (local login vs. handed over by a host) and where on-chain calls are signed (local provider vs. proxied `request({ method, params })`) must be swappable behind it without touching consumers.
+Every builder-server client in `lib/` signs requests through that single chokepoint — never ad-hoc signing in components or hooks. The interface stays **async and provider-shaped**: the session carries the wallet's EIP-1193 `provider` and viem clients are built over it only inside `lib/auth`'s lazily loaded modules, so where the identity comes from (local login vs. handed over by a host) and where on-chain calls are signed (local provider vs. proxied `request({ method, params })`) stay swappable without touching consumers. `lib/chain` is protocol code (contract registry, meta-transaction encoding) and never sees the provider: `lib/auth` hands it the wallet requests it needs.
 
 ### 2. Host-facing side effects go through `lib/` modules
 
@@ -39,12 +39,32 @@ Only `src/config/` may read `window.location.search`, query params, or `window.p
 
 One file creates the router, with `basename` taken from config. No other module constructs routers or assumes how the app is served (path, host, hash), so serving from a different origin/path under a host is a one-file change.
 
+### 5. Back-end clients are folders with one transport
+
+Each back end the app calls has its client under `src/lib/<server>/`: a `transport.ts` that owns the base URL, request signing and envelope parsing, endpoint modules beside it, and an `index.ts` that re-exports them. Only the client's own folder imports its transport, so moving to a server with another base path or routes touches that folder alone. Endpoint functions take and return the app's domain types; the wire types (`wire.ts`), the mappers and the query-string builders (`mappers.ts`) stay inside the client folder, so a server with other shapes is also an edit there alone. Components get data through hooks: from `~/lib/builder` they import URL helpers, error classification and any type, never endpoint functions. ESLint enforces it for the static `~/` imports the codebase uses. Today only builder-server (`src/lib/builder/`) follows it; marketplace-server (`lib/coupons`, `lib/trades`, `lib/listings`) and credits-server (`lib/credits`, `lib/creditPacks`) are the follow-ups.
+
+## Styling: CSS Modules (hard rules)
+
+Components are styled with a colocated `Component.module.css`. Emotion is left only in `Tooltip.styles.ts` and `TopNav.styles.ts`, which style decentraland-ui2's Tooltip and Navbar until the monorepo replaces them: `src/styles/migration.spec.ts` lists exactly those two and fails on any other `*.styles.ts`, and ESLint allows `@emotion/styled` nowhere else.
+
+- **Classes.** One camelCase class per element (`root`, `title`, …): `import styles from './Foo.module.css'`, `className={styles.root}`. Ordinary CSS only, no reaching into another component's elements; a class another component needs is imported from its module (`import publishModal from '…/PublishCollectionModal.module.css'`). `:global(…)` only for markup the app can't class: a third-party library's own class names (react-datepicker, decentraland-ui2's MUI controls), always under a local class.
+- **Tokens.** Colors, gradients, radii, the editor palette, z-index tiers and fonts are custom properties in `src/styles/tokens.css`: `var(--color-soft-white)`, `var(--radius-btn-sm)`, `var(--z-overlay)`. The file is edited by hand; `tokens.spec.ts` fails on a `var(--…)` nothing declares and on a token nothing reads. `src/styles/theme.ts` holds only what TypeScript needs as a value (the rarity palette for the media wash, `breakpoints` and `media` for `useMediaQuery`). A value known only at runtime goes in through a narrowly scoped custom property on `style` (RarityPill's `--rarity-color`); fixed appearance stays in the module.
+- **Variants and state** are `data-*` attributes on the element: `.root[data-variant="secondary"]`, never class toggling.
+- **Composition.** A component that others restyle accepts `className` and merges it after its own with `cx` (`~/lib/cx`), so the consumer's class is the one that wins.
+- **Cascade layers.** The order is declared once in `index.html`, ahead of every stylesheet: `@layer reset, foundations`. The element resets of `index.css` are in `reset`; a class that another module restyles on the same element (Button, `src/styles/shared.module.css`, small atoms, the few classes one flow reuses from another) goes in `@layer foundations`, and everything else stays unlayered. Unlayered rules beat layered ones whatever their specificity, so the consumer's class wins however the bundler orders the two stylesheets. Moving a class into the layer flips any consumer rule that used to lose to it on specificity (a consumer `margin-top` against the base's `[data-x] ~ &`): check them when you do.
+- **Breakpoints.** Custom properties can't be used in media conditions, so write the canonical `breakpoints` of `theme.ts` as literals: `@media (max-width: 768px)`, and `@media not all and (max-width: 768px)` for the exact complement (what `media.minWidth` emits; `min-width: 769px` leaves a gap at fractional widths). `src/styles/breakpoints.spec.ts` fails on any other width in a module unless it is allowlisted there with its reason.
+- **Nesting.** Native CSS nesting is allowed, with an explicit `&`, and a rule's declarations come before its nested rules and `@media` blocks (nesting keeps source order, so a declaration after a nested `@media` would override it). The production build lowers it to flat selectors (Vite minifies CSS with Lightning CSS for its default targets, Chrome 111, Safari 16.4 and Firefox 114, which predate nesting), and the dev server serves it to current browsers as written.
+- **Animations.** `@keyframes` live in the module that uses them: CSS Modules scope animation names, so a module can't reach a global `@keyframes` (each spinner module declares its own `spin`).
+- **Tests.** Vitest doesn't process CSS (`css: false`): module imports resolve to placeholder class names, so specs select by `data-testid` and assert on `data-*`, never on classes or computed styles.
+
 ## Icons
 
-Two sources, nothing else — no icon fonts, no SVG loader/svgr, no per-icon `<img>`:
+Every icon is an inline-SVG component exported from `src/components/Icons/` (`import { Add as AddIcon } from '~/components/Icons'`) — no icon fonts, no SVG loader/svgr, no per-icon `<img>`, no MUI:
 
-- **Generic glyphs** (add, edit, chevrons, more, close, search…) come from `@mui/icons-material`, which decentraland-ui2 already ships: `import { Add as AddIcon } from '@mui/icons-material'`. Prefer these whenever the design uses a stock Material glyph.
-- **Figma-specific glyphs** (brand/product icons that have no Material equivalent, e.g. Jump In, Open Editor) live in `src/components/Icons/`, one file per icon (`JumpInIcon.tsx`), re-exported from `index.ts`. Each is a plain React component rendering an inline `<svg>` with `fill="currentColor"`, `aria-hidden`, `focusable="false"`, the design's intrinsic `width`/`height`, and `...props: SVGProps<SVGSVGElement>` spread last so callers can override. Paste the Figma path data as-is; drop wrappers (`<g clip-path>`, `<defs>`) and hard-coded fills so the glyph inherits the button/text color. Never import `@mui/material` to build icons — it is only a transitive dependency here.
+- **Generic glyphs** (add, edit, chevrons, more, close, search…) are Material icons in `material/`, one file per glyph named after it with the `Icon` suffix like every icon here (`Close` → `CloseIcon`), rendered through `MaterialIcon` as MUI's `SvgIcon` did: 1em square, `currentColor`, `fontSize` `small` / `medium` (default) / `large` / `inherit`. Prefer these whenever the design uses a stock Material glyph; a new one copies an existing file with the glyph's path data from the Material source. Icons don't forward refs, so a `Tooltip asChild` trigger wraps the icon in an element (a button or badge) instead of being the icon itself.
+- **Figma-specific glyphs** (brand/product icons that have no Material equivalent, e.g. Jump In, Open Editor) are one file per icon (`JumpInIcon.tsx`), re-exported from `index.ts`. Each is a plain React component rendering an inline `<svg>` with `fill="currentColor"`, `aria-hidden`, `focusable="false"`, the design's intrinsic `width`/`height`, and `...props: SVGProps<SVGSVGElement>` spread last so callers can override. Paste the Figma path data as-is; drop wrappers (`<g clip-path>`, `<defs>`) and hard-coded fills so the glyph inherits the button/text color.
+
+The build treats every `.tsx` in `src/components/Icons/` as side-effect free (`vite.config.ts`), so an icon ships only in the chunks that render it: keep these files free of top-level side effects.
 
 Icons are decorative: the accessible name comes from the button/link text or its `aria-label`, never from the SVG.
 

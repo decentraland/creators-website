@@ -29,7 +29,7 @@ import { getMaticChainId } from '~/lib/publishCollection'
 import { loadSentRoot, saveSentRoot } from '~/lib/pendingLinkedPayment'
 import { buildReviewThirdPartyCall, fetchRegisteredThirdParty } from '~/lib/thirdPartyRegistry'
 import { type ThirdParty } from '~/lib/thirdParty'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isExpectedWalletError, isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 import { itemCurationsKey, thirdPartyKey } from './useLinkedCollection'
 import { invalidateCollectionItems } from './usePublishCollection'
 
@@ -62,6 +62,8 @@ export type LinkedApprovalView =
       failed: LinkedDeployFailure[]
       /** The items an expected stop is about, named to the curator. */
       items?: Item[]
+      /** The wallet sits on another account or network: the curator switches it back and retries. */
+      wallet?: boolean
     }
 
 const IDLE: LinkedStepPhase = { kind: 'idle' }
@@ -122,8 +124,9 @@ export function useLinkedApprovalFlow(
         track('Approve TP Collection error', { collectionId: collection.id, step: error.reason })
         return setView({ kind: 'error', step: error.reason, failed, items: error.items })
       }
-      captureError(error, { flow: 'linked_curation_approve', step, collectionId: collection.id })
       track('Approve TP Collection error', { collectionId: collection.id, step, error: errorCode(error) })
+      if (isWalletStateError(error)) return setView({ kind: 'error', step, failed, wallet: true })
+      captureError(error, { flow: 'linked_curation_approve', step, collectionId: collection.id })
       setView({ kind: 'error', step, failed })
     },
     [collection.id, refresh]
@@ -322,7 +325,7 @@ export function useReviewThirdParty(session: Session | null) {
         thirdPartyId: thirdParty.id,
         error: errorCode(error)
       })
-      if (!isWalletRejection(error))
+      if (!isExpectedWalletError(error))
         captureError(error, { flow: 'linked_curation_review', thirdPartyId: thirdParty.id })
     }
   })

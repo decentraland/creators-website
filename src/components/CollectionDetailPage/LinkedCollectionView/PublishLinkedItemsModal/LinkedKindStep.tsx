@@ -1,11 +1,11 @@
-import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material'
+import { ChevronLeftIcon, ChevronRightIcon } from '~/components/Icons'
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
 import { weiToUsdCents } from '~/lib/publishFee'
 import { type ThirdPartyPrice } from '~/lib/thirdPartyRegistry'
 import { Button } from '~/components/Button'
-import * as S from '../../PublishCollectionModal/PublishCollectionModal.styles'
-import * as R from './LinkedPublishRow.styles'
+import publishModal from '~/components/CollectionDetailPage/PublishCollectionModal/PublishCollectionModal.module.css'
+import publishRow from './LinkedPublishRow.module.css'
 
 type Props = {
   value: boolean
@@ -24,20 +24,21 @@ export function LinkedKindStep({ value, price, priceError, onRetryPrice, onChang
   const usd = (wei: bigint) => intl.formatNumber(weiToUsdCents(wei) / 100, { style: 'currency', currency: 'USD' })
 
   return (
-    <S.Step data-testid="publish-linked-kind-step">
-      <S.Heading>{t('publish_linked_modal.kind_step.title')}</S.Heading>
-      <S.Text>{t('publish_linked_modal.kind_step.description')}</S.Text>
+    <div className={publishModal.step} data-testid="publish-linked-kind-step">
+      <h3 className={publishModal.heading}>{t('publish_linked_modal.kind_step.title')}</h3>
+      <p className={publishModal.text}>{t('publish_linked_modal.kind_step.description')}</p>
       {priceError ? (
-        <S.InlineNote data-testid="publish-linked-price-error">
+        <p className={publishModal.inlineNote} data-testid="publish-linked-price-error">
           {t('publish_linked_modal.payment_step.price_error')}
           <Button type="button" variant="secondary" size="sm" onClick={onRetryPrice}>
             {t('publish_collection_modal.payment_step.retry')}
           </Button>
-        </S.InlineNote>
+        </p>
       ) : (
-        <R.KindCards role="radiogroup" aria-label={t('publish_linked_modal.kind_step.title')}>
+        <div className={publishRow.kindCards} role="radiogroup" aria-label={t('publish_linked_modal.kind_step.title')}>
           {[false, true].map(programmatic => (
-            <R.KindCard
+            <button
+              className={publishRow.kindCard}
               key={String(programmatic)}
               type="button"
               role="radio"
@@ -46,11 +47,16 @@ export function LinkedKindStep({ value, price, priceError, onRetryPrice, onChang
               data-testid={`publish-linked-kind-${programmatic ? 'programmatic' : 'standard'}`}
               onClick={() => onChange(programmatic)}
             >
-              <R.KindTitle>{t(`linked_collection.kind.${programmatic ? 'programmatic' : 'standard'}`)}</R.KindTitle>
-              <R.KindText>
+              <span className={publishRow.kindTitle}>
+                {t(`linked_collection.kind.${programmatic ? 'programmatic' : 'standard'}`)}
+              </span>
+              <span className={publishRow.kindText}>
                 {t(`publish_linked_modal.kind_step.${programmatic ? 'programmatic' : 'standard'}_description`)}
-              </R.KindText>
-              <R.KindPrice data-testid={`publish-linked-kind-${programmatic ? 'programmatic' : 'standard'}-price`}>
+              </span>
+              <span
+                className={publishRow.kindPrice}
+                data-testid={`publish-linked-kind-${programmatic ? 'programmatic' : 'standard'}-price`}
+              >
                 {price
                   ? programmatic
                     ? t('publish_linked_modal.kind_step.programmatic_price', {
@@ -59,12 +65,12 @@ export function LinkedKindStep({ value, price, priceError, onRetryPrice, onChang
                       })
                     : t('publish_linked_modal.kind_step.standard_price', { price: usd(price.itemSlotUsdWei) })
                   : '…'}
-              </R.KindPrice>
-            </R.KindCard>
+              </span>
+            </button>
           ))}
-        </R.KindCards>
+        </div>
       )}
-      <S.Footer>
+      <div className={publishModal.footer}>
         <Button type="button" variant="secondary" data-testid="publish-back" onClick={onBack}>
           <ChevronLeftIcon fontSize="small" />
           {t('publish_collection_modal.back')}
@@ -73,7 +79,7 @@ export function LinkedKindStep({ value, price, priceError, onRetryPrice, onChang
           {t('publish_linked_modal.kind_step.confirm')}
           <ChevronRightIcon fontSize="small" />
         </Button>
-      </S.Footer>
-    </S.Step>
+      </div>
+    </div>
   )
 }

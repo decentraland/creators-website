@@ -1,10 +1,5 @@
 import { useMemo } from 'react'
-import {
-  Add as AddIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
-  ExpandMore as ExpandIcon
-} from '@mui/icons-material'
+import { AddIcon, ChevronLeftIcon, ChevronRightIcon, ExpandMoreIcon as ExpandIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { useFriends } from '~/hooks/useSales'
 import { useProfile } from '~/hooks/useProfile'
@@ -26,9 +21,9 @@ import { Button } from '~/components/Button'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { Modal } from '~/components/Modal'
 import { StepIndicator } from '~/components/StepIndicator'
-import * as Sell from '../SellItemFlow/SellItemModal.styles'
+import sell from '../SellItemFlow/SellItemModal.module.css'
+import styles from './SendItemsModal.module.css'
 import { TransferCard } from './TransferCard'
-import * as S from './SendItemsModal.styles'
 
 export type SendStep = 'select' | 'confirm'
 
@@ -77,17 +72,23 @@ export function SendItemsModal({
 
   return (
     <Modal title={t('send_items_modal.title')} compact onClose={onClose} closeDisabled={busy} testId="send-items-modal">
-      <Sell.Divider />
-      <S.Steps>
+      <hr className={sell.divider} />
+      <div className={styles.steps}>
         <StepIndicator
           current={step === 'select' ? 1 : 2}
           total={2}
           labels={[t('send_items_modal.step_select'), t('send_items_modal.step_confirm')]}
           testId="send-steps"
         />
-      </S.Steps>
+      </div>
       {/* Keyed by step so the body remounts and the confirm step opens at the top, not where the list was scrolled. */}
-      <S.Body key={step} data-busy={busy || undefined} aria-busy={busy || undefined} {...(busy ? { inert: '' } : {})}>
+      <div
+        className={styles.body}
+        key={step}
+        data-busy={busy || undefined}
+        aria-busy={busy || undefined}
+        {...(busy ? { inert: '' } : {})}
+      >
         {step === 'select' ? (
           <>
             {transfers.map((transfer, index) => (
@@ -105,7 +106,8 @@ export function SendItemsModal({
               />
             ))}
             {!recipientsFull && (
-              <S.AddTransfer
+              <Button
+                className={styles.addTransfer}
                 type="button"
                 variant="secondary"
                 data-testid="send-add-transfer"
@@ -113,32 +115,32 @@ export function SendItemsModal({
               >
                 <AddIcon fontSize="small" />
                 {t('send_items_modal.add_transfer')}
-              </S.AddTransfer>
+              </Button>
             )}
-            <S.Total data-over={over || undefined} data-testid="send-total">
+            <p className={styles.total} data-over={over || undefined} data-testid="send-total">
               <span>{t('send_items_modal.total', { count: total, max: MAX_ITEMS_PER_SEND })}</span>
               {over && <span>{t('send_items_modal.limit_reached', { max: MAX_ITEMS_PER_SEND })}</span>}
-            </S.Total>
+            </p>
           </>
         ) : (
           <>
-            <S.Intro>{t('send_items_modal.confirm_intro', { count: total })}</S.Intro>
-            <S.Summary open data-testid="send-summary">
+            <p className={styles.intro}>{t('send_items_modal.confirm_intro', { count: total })}</p>
+            <details className={styles.summary} open data-testid="send-summary">
               <summary>
                 {t('send_items_modal.summary', { recipients: bundles.length, items: itemCount, copies: total })}
                 <ExpandIcon />
               </summary>
-              <S.SummaryBody>
+              <div className={styles.summaryBody}>
                 {bundles.map(bundle => (
                   <RecipientSummary key={bundle.address} bundle={bundle} items={items} friends={friends.data} />
                 ))}
-              </S.SummaryBody>
-            </S.Summary>
+              </div>
+            </details>
           </>
         )}
-      </S.Body>
+      </div>
 
-      <Sell.Footer>
+      <div className={sell.footer}>
         {step === 'select' ? (
           <Button type="button" variant="secondary" data-testid="send-cancel" onClick={onClose}>
             {t('sell_item_modal.cancel')}
@@ -171,7 +173,7 @@ export function SendItemsModal({
             {t('send_items_modal.submit')}
           </Button>
         )}
-      </Sell.Footer>
+      </div>
     </Modal>
   )
 }
@@ -182,27 +184,33 @@ function RecipientSummary({ bundle, items, friends }: SummaryProps) {
   const { t } = useTranslation()
   const chosen = useMemo(() => items.filter(item => (bundle.amounts[item.id] ?? 0) > 0), [items, bundle])
   return (
-    <S.RecipientCard data-testid={`send-summary-${bundle.address}`}>
+    <div className={styles.recipientCard} data-testid={`send-summary-${bundle.address}`}>
       <RecipientLine address={bundle.address} friends={friends} />
-      <S.Items>
+      <ul className={styles.items}>
         {chosen.map(item => {
           const thumbnailHash = item.contents[item.thumbnail]
           const stock = getStock(item)
           return (
-            <S.ItemRow key={item.id}>
-              <S.Thumb>
+            <li className={styles.itemRow} key={item.id}>
+              <div className={styles.thumb}>
                 <ItemThumbnail src={thumbnailHash ? getContentsStorageUrl(thumbnailHash) : null} rarity={item.rarity} />
-              </S.Thumb>
-              <S.ItemText>
-                <S.ItemName title={item.name}>{item.name}</S.ItemName>
-                <S.Label>{t('send_items_modal.available', { available: stock.available, total: stock.total })}</S.Label>
-              </S.ItemText>
-              <S.Amount data-testid={`send-summary-${bundle.address}-${item.id}`}>{bundle.amounts[item.id]}</S.Amount>
-            </S.ItemRow>
+              </div>
+              <div className={styles.itemText}>
+                <span className={styles.itemName} title={item.name}>
+                  {item.name}
+                </span>
+                <span className={styles.label}>
+                  {t('send_items_modal.available', { available: stock.available, total: stock.total })}
+                </span>
+              </div>
+              <span className={styles.amount} data-testid={`send-summary-${bundle.address}-${item.id}`}>
+                {bundle.amounts[item.id]}
+              </span>
+            </li>
           )
         })}
-      </S.Items>
-    </S.RecipientCard>
+      </ul>
+    </div>
   )
 }
 
@@ -215,10 +223,14 @@ export function RecipientLine({ address, friends, testId = 'send-summary-recipie
   const name = friend?.name ?? profile.data?.name
   const avatar = friend?.avatarUrl ?? profile.data?.avatar?.snapshots?.face256
   return (
-    <S.RecipientLine data-testid={testId}>
-      {avatar ? <Sell.Avatar src={avatar} alt="" /> : <Sell.AvatarFallback aria-hidden />}
+    <div className={styles.recipientLine} data-testid={testId}>
+      {avatar ? (
+        <img className={sell.avatar} src={avatar} alt="" />
+      ) : (
+        <span className={sell.avatarFallback} aria-hidden />
+      )}
       {name && <b>{name}</b>}
       <span title={address}>{name ? `(${address})` : address}</span>
-    </S.RecipientLine>
+    </div>
   )
 }

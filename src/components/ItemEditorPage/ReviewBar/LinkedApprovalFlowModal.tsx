@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { ChevronRight as ChevronRightIcon, WarningAmberOutlined as WarningIcon } from '@mui/icons-material'
+import { ChevronRightIcon, WarningAmberOutlinedIcon as WarningIcon } from '~/components/Icons'
 import approvedArt from '~/assets/send-success.png'
 import errorArt from '~/assets/modal-error.png'
 import { useTranslation } from '~/intl'
@@ -12,17 +11,20 @@ import { PendingModal } from '~/components/PendingModal'
 import { StepIndicator } from '~/components/StepIndicator'
 import { SuccessModal } from '~/components/SuccessModal'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import { useCatalystItemSizes } from '~/hooks/useItemSize'
 import { useLinkedApprovalFlow } from '~/hooks/useLinkedReview'
 import { isSocialLogin, type Session } from '~/lib/auth'
-import { fetchContentSize, getContentsStorageUrl } from '~/lib/builder'
+import { getContentsStorageUrl } from '~/lib/builder'
 import { type Collection } from '~/lib/collections'
 import { type Item } from '~/lib/items'
 import { decodeLinkedUrn, type ThirdParty } from '~/lib/thirdParty'
-import { itemSizesKey, measureItems } from '~/lib/approveCollection'
 import { type ReviewedContent } from '~/lib/approveLinkedCollection'
 import { ProgressModal } from '~/components/ProgressModal'
-import { formatSize } from './formatSize'
-import * as S from './ApprovalFlowModal.styles'
+import { formatItemBytes } from './formatSize'
+import { cx } from '~/lib/cx'
+import styles from './ApprovalFlowModal.module.css'
+import publishModal from '~/components/CollectionDetailPage/PublishCollectionModal/PublishCollectionModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Props = {
   session: Session
@@ -52,13 +54,8 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
   )
   useBeforeUnloadGuard(view.kind === 'step' && (view.phase.kind !== 'idle' || flow.running))
   const pendingItems = plan?.pendingItems
-  const sizesKey = useMemo(() => itemSizesKey(pendingItems ?? []), [pendingItems])
-  const sizes = useQuery({
-    queryKey: sizesKey,
-    queryFn: () => measureItems(pendingItems ?? [], fetchContentSize),
-    enabled: view.kind === 'step' && view.step === 'deploy' && !!pendingItems,
-    staleTime: Infinity
-  })
+  const sizeItems = useMemo(() => pendingItems ?? [], [pendingItems])
+  const sizes = useCatalystItemSizes(sizeItems, { enabled: view.kind === 'step' && view.step === 'deploy' })
 
   useEffect(() => {
     void start()
@@ -118,7 +115,7 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
       return (
         <ConfirmModal
           title={t('approval_flow.error.title_approve')}
-          description={t(`linked_approval_flow.error.${view.step}`)}
+          description={t(view.wallet ? 'wallet_error.wrong_account' : `linked_approval_flow.error.${view.step}`)}
           art={{ src: errorArt }}
           onClose={onClose}
           cancel={{ label: t('approval_flow.cancel'), onClick: onClose, testId: 'approval-error-cancel' }}
@@ -126,12 +123,14 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
           testId="approval-error"
         >
           {failedText && (
-            <S.Detail>
-              <S.DetailHeader>
+            <div className={styles.detail}>
+              <div className={styles.detailHeader}>
                 <span>{t('linked_approval_flow.failed_items')}</span>
-              </S.DetailHeader>
-              <S.DetailText data-testid="approval-error-detail">{failedText}</S.DetailText>
-            </S.Detail>
+              </div>
+              <pre className={styles.detailText} data-testid="approval-error-detail">
+                {failedText}
+              </pre>
+            </div>
           )}
         </ConfirmModal>
       )
@@ -177,49 +176,56 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
       size="large"
       testId="approval-flow-modal"
     >
-      <S.Main data-single={single || undefined}>
+      <div className={cx(publishModal.main, styles.main)} data-single={single || undefined}>
         {!single && <StepIndicator current={steps.indexOf(step) + 1} total={steps.length} testId="approval-steps" />}
-        <S.Step data-testid={`approval-step-${step}`}>
-          {!single && <S.Heading>{t(`linked_approval_flow.${step}.title`)}</S.Heading>}
-          <S.Text>
+        <div className={cx(publishModal.step, styles.step)} data-testid={`approval-step-${step}`}>
+          {!single && <h3 className={publishModal.heading}>{t(`linked_approval_flow.${step}.title`)}</h3>}
+          <p className={publishModal.text}>
             {t(`linked_approval_flow.${step}.body`, {
               count: items.length,
               slots: plan?.slots.length ? plan.approvalData.cheque.qty : 0
             })}
-          </S.Text>
+          </p>
           {step === 'root' && !thirdParty.isApproved && (
-            <S.Warning data-testid="approval-reenables-third-party">
+            <div className={styles.warning} data-testid="approval-reenables-third-party">
               <WarningIcon aria-hidden />
               <p>{t('linked_approval_flow.root.reenables')}</p>
-            </S.Warning>
+            </div>
           )}
-          <S.Table>
-            <S.Header data-table="deploy">
+          <div className={cx(publishModal.table, styles.table)}>
+            <div className={cx(publishModal.tableHeader, styles.header)} data-table="deploy">
               <span>{t('approval_flow.columns.item')}</span>
               <span>{t(step === 'deploy' ? 'approval_flow.columns.size' : 'linked_approval_flow.columns.urn')}</span>
-            </S.Header>
-            <S.TableBody>
+            </div>
+            <div className={publishModal.tableBody}>
               {items.slice(0, SHOWN_ITEMS).map(item => {
-                const bytes = sizes.data?.get(item.id)
                 return (
-                  <S.Row key={item.id} data-table="deploy" data-testid="approval-item-row">
+                  <div className={styles.row} key={item.id} data-table="deploy" data-testid="approval-item-row">
                     <ItemName item={item} />
                     {step === 'deploy' ? (
-                      <span data-testid="approval-item-size">{bytes === undefined ? '—' : formatSize(t, bytes)}</span>
+                      <span data-testid="approval-item-size">
+                        {formatItemBytes(t, sizes, item.id) ?? (
+                          <span
+                            className={cx(shared.spinner, styles.sizeSpinner)}
+                            role="status"
+                            aria-label={t('approval_flow.size_measuring')}
+                          />
+                        )}
+                      </span>
                     ) : (
                       <span title={item.urn}>{decodeLinkedUrn(item.urn)?.itemSuffix ?? item.urn}</span>
                     )}
-                  </S.Row>
+                  </div>
                 )
               })}
               {items.length > SHOWN_ITEMS && (
-                <S.Row data-table="deploy">
+                <div className={styles.row} data-table="deploy">
                   <span>{t('linked_approval_flow.more_items', { count: items.length - SHOWN_ITEMS })}</span>
-                </S.Row>
+                </div>
               )}
-            </S.TableBody>
-          </S.Table>
-          <S.Footer>
+            </div>
+          </div>
+          <div className={cx(publishModal.footer, styles.footer)}>
             <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
               {t('approval_flow.cancel')}
             </Button>
@@ -232,9 +238,9 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
               {t(`linked_approval_flow.${step}.action`)}
               {!isLast && <ChevronRightIcon fontSize="small" />}
             </Button>
-          </S.Footer>
-        </S.Step>
-      </S.Main>
+          </div>
+        </div>
+      </div>
     </Modal>
   )
 }
@@ -242,11 +248,11 @@ export function LinkedApprovalFlowModal({ session, collection, thirdParty, revie
 function ItemName({ item }: { item: Item }) {
   const thumbnail = item.contents[item.thumbnail]
   return (
-    <S.NameCell>
-      <S.Thumb>
+    <div className={styles.nameCell}>
+      <span className={publishModal.thumb}>
         <ItemThumbnail src={thumbnail ? getContentsStorageUrl(thumbnail) : null} rarity={item.rarity} />
-      </S.Thumb>
+      </span>
       <span title={item.name}>{item.name}</span>
-    </S.NameCell>
+    </div>
   )
 }

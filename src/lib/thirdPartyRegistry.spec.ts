@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ethers } from 'ethers'
 import { type ContractNetwork } from '@dcl/schemas'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
+import { zeroHash, parseSignature, serializeCompactSignature, signatureToCompactSignature } from 'viem'
 import { readContract } from '~/lib/auth'
-import { encodeContractCall } from './auth/transactions'
+import { decodeCall, toTransaction } from '~/test/chain'
 import { type ThirdParty } from './thirdParty'
 import {
   buildAddThirdPartyCall,
@@ -26,6 +26,10 @@ const ETHER = 10n ** 18n
 const MANAGER = '0x00000000000000000000000000000000000000aa'
 const THIRD_PARTY_ID = 'urn:decentraland:amoy:collections-thirdparty:brand'
 const REGISTRY = getThirdPartyRegistry(CHAIN_ID)
+const CHEQUE_SALT = '0x' + '11'.repeat(32)
+// The test key's ConsumeSlots signature over 7 slots for THIRD_PARTY_ID with CHEQUE_SALT.
+const CHEQUE_SIGNATURE =
+  '0xbf74a2f7e0d8605bf625e60290c386c17b46a686883679291f59cba180a29c3f02091e78bd3af41ca07b70402079d52fca7db57a373c3d8425f71f75d1be88d91c'
 
 const thirdParty: ThirdParty = {
   id: THIRD_PARTY_ID,
@@ -41,9 +45,9 @@ const thirdParty: ThirdParty = {
 }
 
 /** Encodes the call with the registry ABI and decodes it back: proves the args fit the contract's signature. */
-function roundTrip(call: ReturnType<typeof buildBuyItemSlotsCall>) {
+function roundTrip(call: ReturnType<typeof buildBuyItemSlotsCall>): any[] {
   expect(call.contract.address).toBe(REGISTRY.address)
-  return new ethers.utils.Interface(call.contract.abi).decodeFunctionData(call.method, encodeContractCall(call))
+  return decodeCall(call) as any[]
 }
 
 describe('buildAddThirdPartyCall', () => {
@@ -53,23 +57,56 @@ describe('buildAddThirdPartyCall', () => {
     expect(call.method).toBe('addThirdParties')
     const [parties, programmatic, maxPrices] = roundTrip(call)
     expect(parties).toHaveLength(1)
-    const [id, metadata, resolver, managers, enabled, slots] = parties[0]
+    const { id, metadata, resolver, managers, managerValues, slots } = parties[0]
     expect(id).toBe(THIRD_PARTY_ID)
     expect(metadata).toBe(`tp:1:Brand:A brand:amoy-${'0x' + '1'.repeat(40)}`)
     expect(resolver).toBe('Disabled')
     expect(managers.map((manager: string) => manager.toLowerCase())).toEqual([MANAGER])
-    expect(enabled).toEqual([true])
-    expect(slots.toString()).toBe('200')
+    expect(managerValues).toEqual([true])
+    expect(slots).toBe(200n)
     expect(programmatic).toEqual([true])
-    expect(maxPrices.map((value: ethers.BigNumber) => BigInt(value.toString()))).toEqual([603n * ETHER])
+    expect(maxPrices).toEqual([603n * ETHER])
+    expect(toTransaction(call)).toEqual({
+      to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
+      data:
+        '0xdb9aa95c' +
+        '0000000000000000000000000000000000000000000000000000000000000060' +
+        '0000000000000000000000000000000000000000000000000000000000000300' +
+        '0000000000000000000000000000000000000000000000000000000000000340' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000120' +
+        '00000000000000000000000000000000000000000000000000000000000001a0' +
+        '00000000000000000000000000000000000000000000000000000000000001e0' +
+        '0000000000000000000000000000000000000000000000000000000000000220' +
+        '00000000000000000000000000000000000000000000000000000000000000c8' +
+        '0000000000000000000000000000000000000000000000000000000000000032' +
+        '75726e3a646563656e7472616c616e643a616d6f793a636f6c6c656374696f6e' +
+        '732d746869726470617274793a6272616e640000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000042' +
+        '74703a313a4272616e643a41206272616e643a616d6f792d3078313131313131' +
+        '3131313131313131313131313131313131313131313131313131313131313131' +
+        '3131000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000008' +
+        '44697361626c6564000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '00000000000000000000000000000000000000000000000000000000000000aa' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '000000000000000000000000000000000000000000000020b04e592b488c0000'
+    })
   })
 
   it('enables every manager', () => {
     const other = '0x00000000000000000000000000000000000000bb'
     const call = buildAddThirdPartyCall(CHAIN_ID, { ...thirdParty, managers: [MANAGER, other] }, 1, ETHER)
     const [parties] = roundTrip(call)
-    expect(parties[0][3]).toHaveLength(2)
-    expect(parties[0][4]).toEqual([true, true])
+    expect(parties[0].managers).toHaveLength(2)
+    expect(parties[0].managerValues).toEqual([true, true])
   })
 })
 
@@ -81,13 +118,37 @@ describe('buildUpdateThirdPartyCall', () => {
     expect(call.method).toBe('updateThirdParties')
     const [parties] = roundTrip(call)
     expect(parties).toHaveLength(1)
-    const [id, metadata, resolver, managers, enabled, slots] = parties[0]
+    const { id, metadata, resolver, managers, managerValues, slots } = parties[0]
     expect(id).toBe(THIRD_PARTY_ID)
     expect(metadata).toBe(`tp:1:Brand:A brand:mainnet-${next.address}`)
     expect(resolver).toBe('')
     expect(managers).toEqual([])
-    expect(enabled).toEqual([])
-    expect(slots.toString()).toBe('0')
+    expect(managerValues).toEqual([])
+    expect(slots).toBe(0n)
+    expect(toTransaction(call)).toEqual({
+      to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
+      data:
+        '0x7c08ba09' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000120' +
+        '00000000000000000000000000000000000000000000000000000000000001a0' +
+        '00000000000000000000000000000000000000000000000000000000000001c0' +
+        '00000000000000000000000000000000000000000000000000000000000001e0' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000032' +
+        '75726e3a646563656e7472616c616e643a616d6f793a636f6c6c656374696f6e' +
+        '732d746869726470617274793a6272616e640000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000045' +
+        '74703a313a4272616e643a41206272616e643a6d61696e6e65742d3078323232' +
+        '3232323232323232323232323232323232323232323232323232323232323232' +
+        '3232323232000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000000'
+    })
   })
 })
 
@@ -98,28 +159,46 @@ describe('buildBuyItemSlotsCall', () => {
     expect(call.method).toBe('buyItemSlots')
     const [id, qty, maxPrice] = roundTrip(call)
     expect(id).toBe(THIRD_PARTY_ID)
-    expect(qty.toString()).toBe('3')
-    expect(BigInt(maxPrice.toString())).toBe(603n * ETHER)
+    expect(qty).toBe(3n)
+    expect(maxPrice).toBe(603n * ETHER)
+    expect(toTransaction(call)).toEqual({
+      to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
+      data:
+        '0xd8f0f3c1' +
+        '0000000000000000000000000000000000000000000000000000000000000060' +
+        '0000000000000000000000000000000000000000000000000000000000000003' +
+        '000000000000000000000000000000000000000000000020b04e592b488c0000' +
+        '0000000000000000000000000000000000000000000000000000000000000032' +
+        '75726e3a646563656e7472616c616e643a616d6f793a636f6c6c656374696f6e' +
+        '732d746869726470617274793a6272616e640000000000000000000000000000'
+    })
   })
 })
 
 describe('toChequeSlot', () => {
-  it('splits the cheque into the tuple the registry consumes', async () => {
-    const wallet = ethers.Wallet.createRandom()
-    const salt = '0x' + '11'.repeat(32)
-    const signature = await wallet.signMessage('cheque')
-    const { r, s, v } = ethers.utils.splitSignature(signature)
+  it('splits the cheque into the tuple the registry consumes', () => {
+    expect(toChequeSlot({ signature: CHEQUE_SIGNATURE, qty: 7, salt: CHEQUE_SALT })).toEqual([
+      '7',
+      '0x1111111111111111111111111111111111111111111111111111111111111111',
+      '0xbf74a2f7e0d8605bf625e60290c386c17b46a686883679291f59cba180a29c3f',
+      '0x02091e78bd3af41ca07b70402079d52fca7db57a373c3d8425f71f75d1be88d9',
+      28
+    ])
+  })
 
-    expect(toChequeSlot({ signature, qty: 7, salt })).toEqual(['7', salt, r, s, v])
+  it('splits a compact 64-byte signature into the same tuple', () => {
+    const compact = serializeCompactSignature(signatureToCompactSignature(parseSignature(CHEQUE_SIGNATURE)))
+    expect(toChequeSlot({ signature: compact, qty: 7, salt: CHEQUE_SALT })).toEqual(
+      toChequeSlot({ signature: CHEQUE_SIGNATURE, qty: 7, salt: CHEQUE_SALT })
+    )
   })
 })
 
 describe('buildReviewThirdPartyWithRootCall', () => {
-  it('sets the root and consumes the cheques', async () => {
-    const wallet = ethers.Wallet.createRandom()
-    const salt = '0x' + '11'.repeat(32)
+  it('sets the root and consumes the cheques', () => {
+    const salt = CHEQUE_SALT
     const root = '0x' + '22'.repeat(32)
-    const slot = toChequeSlot({ signature: await wallet.signMessage('cheque'), qty: 7, salt })
+    const slot = toChequeSlot({ signature: CHEQUE_SIGNATURE, qty: 7, salt })
 
     const call = buildReviewThirdPartyWithRootCall(CHAIN_ID, THIRD_PARTY_ID, root, [slot])
 
@@ -128,9 +207,26 @@ describe('buildReviewThirdPartyWithRootCall', () => {
     expect(id).toBe(THIRD_PARTY_ID)
     expect(decodedRoot).toBe(root)
     expect(slots).toHaveLength(1)
-    expect(slots[0][0].toString()).toBe('7')
-    expect(slots[0][1]).toBe(salt)
-    expect(slots[0][4]).toBe(slot[4])
+    expect(slots[0].qty).toBe(7n)
+    expect(slots[0].salt).toBe(salt)
+    expect(slots[0].sigV).toBe(slot[4])
+    expect(toTransaction(call)).toEqual({
+      to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
+      data:
+        '0x3cb681b0' +
+        '0000000000000000000000000000000000000000000000000000000000000060' +
+        '2222222222222222222222222222222222222222222222222222222222222222' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000032' +
+        '75726e3a646563656e7472616c616e643a616d6f793a636f6c6c656374696f6e' +
+        '732d746869726470617274793a6272616e640000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000007' +
+        '1111111111111111111111111111111111111111111111111111111111111111' +
+        'bf74a2f7e0d8605bf625e60290c386c17b46a686883679291f59cba180a29c3f' +
+        '02091e78bd3af41ca07b70402079d52fca7db57a373c3d8425f71f75d1be88d9' +
+        '000000000000000000000000000000000000000000000000000000000000001c'
+    })
   })
 
   it('accepts no cheques when they were already consumed', () => {
@@ -147,8 +243,23 @@ describe('buildReviewThirdPartyCall', () => {
     expect(call.method).toBe('reviewThirdParties')
     const [reviews] = roundTrip(call)
     expect(reviews).toHaveLength(1)
-    expect(reviews[0][0]).toBe(THIRD_PARTY_ID)
-    expect(reviews[0][1]).toBe(false)
+    expect(reviews[0].id).toBe(THIRD_PARTY_ID)
+    expect(reviews[0].value).toBe(false)
+    expect(toTransaction(call)).toEqual({
+      to: '0x7d7c0b9d97385bada5fec6861e97d0df414af3c3',
+      data:
+        '0x39276e37' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '0000000000000000000000000000000000000000000000000000000000000001' +
+        '0000000000000000000000000000000000000000000000000000000000000020' +
+        '0000000000000000000000000000000000000000000000000000000000000060' +
+        '0000000000000000000000000000000000000000000000000000000000000000' +
+        '00000000000000000000000000000000000000000000000000000000000000c0' +
+        '0000000000000000000000000000000000000000000000000000000000000032' +
+        '75726e3a646563656e7472616c616e643a616d6f793a636f6c6c656374696f6e' +
+        '732d746869726470617274793a6272616e640000000000000000000000000000' +
+        '0000000000000000000000000000000000000000000000000000000000000000'
+    })
   })
 })
 
@@ -169,13 +280,13 @@ describe('fetchThirdPartyPrice', () => {
     const oracle = getContract(ContractName.ChainlinkOracle, CHAIN_ID)
     vi.mocked(readContract).mockImplementation(async (contract, method) => {
       if (contract.address === REGISTRY.address && method === 'itemSlotPrice') {
-        return ethers.BigNumber.from((100n * ETHER).toString())
+        return 100n * ETHER
       }
       if (contract.address === REGISTRY.address && method === 'programmaticBasePurchasedSlots') {
-        return ethers.BigNumber.from(200)
+        return 200n
       }
       if (contract.address === oracle.address && method === 'getRate') {
-        return ethers.BigNumber.from((ETHER / 2n).toString())
+        return ETHER / 2n
       }
       throw new Error(`Unexpected read ${method}`)
     })
@@ -189,33 +300,50 @@ describe('fetchThirdPartyPrice', () => {
   })
 })
 
+/** The registry's `thirdParties` outputs, as the chain returns them. */
+function thirdPartyRecord({
+  root = zeroHash,
+  maxItems = 0n,
+  registered = 0n,
+  metadata = ''
+}: {
+  root?: string
+  maxItems?: bigint
+  registered?: bigint
+  metadata?: string
+}) {
+  return [false, root, maxItems, 0n, registered, metadata, '']
+}
+
 describe('fetchRegisteredContracts', () => {
   it('lists the contracts of the registry record, lower-cased, and none for a bare record', async () => {
-    vi.mocked(readContract).mockResolvedValueOnce({
-      metadata: `tp:1:Brand:A brand:mainnet-0x${'A'.repeat(40)};matic-0x${'b'.repeat(40)}`
-    })
+    vi.mocked(readContract).mockResolvedValueOnce(
+      thirdPartyRecord({ metadata: `tp:1:Brand:A brand:mainnet-0x${'A'.repeat(40)};matic-0x${'b'.repeat(40)}` })
+    )
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([
       { network: 'mainnet', address: '0x' + 'a'.repeat(40) },
       { network: 'matic', address: '0x' + 'b'.repeat(40) }
     ])
-    vi.mocked(readContract).mockResolvedValueOnce({ metadata: 'tp:1:Brand:A brand' })
+    vi.mocked(readContract).mockResolvedValueOnce(thirdPartyRecord({ metadata: 'tp:1:Brand:A brand' }))
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([])
   })
 
   it('does not mistake description text for a contract', async () => {
-    vi.mocked(readContract).mockResolvedValueOnce({ metadata: 'tp:1:Brand:Shop: limited-edition' })
+    vi.mocked(readContract).mockResolvedValueOnce(thirdPartyRecord({ metadata: 'tp:1:Brand:Shop: limited-edition' }))
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([])
   })
 
   it('refuses a record whose contract segment is only partly readable', async () => {
-    vi.mocked(readContract).mockResolvedValueOnce({
-      metadata: `tp:1:Brand:A brand:mainnet-0x${'a'.repeat(40)};moon-0x1`
-    })
+    vi.mocked(readContract).mockResolvedValueOnce(
+      thirdPartyRecord({ metadata: `tp:1:Brand:A brand:mainnet-0x${'a'.repeat(40)};moon-0x1` })
+    )
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).rejects.toThrow('could not be parsed')
   })
 
   it('still reads the contracts when a legacy description contains a colon', async () => {
-    vi.mocked(readContract).mockResolvedValueOnce({ metadata: `tp:1:Brand:Note: legacy:matic-0x${'b'.repeat(40)}` })
+    vi.mocked(readContract).mockResolvedValueOnce(
+      thirdPartyRecord({ metadata: `tp:1:Brand:Note: legacy:matic-0x${'b'.repeat(40)}` })
+    )
     await expect(fetchRegisteredContracts(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual([
       { network: 'matic', address: '0x' + 'b'.repeat(40) }
     ])
@@ -228,7 +356,7 @@ describe('fetchRegisteredThirdParty', () => {
     vi.mocked(readContract).mockImplementation(async (_contract, method, args) => {
       expect(method).toBe('thirdParties')
       expect(args).toEqual([THIRD_PARTY_ID])
-      return { registered: ethers.BigNumber.from(1), maxItems: ethers.BigNumber.from(12), root }
+      return thirdPartyRecord({ registered: 1n, maxItems: 12n, root })
     })
     await expect(fetchRegisteredThirdParty(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual({
       registered: true,
@@ -238,11 +366,7 @@ describe('fetchRegisteredThirdParty', () => {
   })
 
   it('reads an unknown third party as unregistered, with no slots and no root', async () => {
-    vi.mocked(readContract).mockResolvedValue({
-      registered: ethers.BigNumber.from(0),
-      maxItems: ethers.BigNumber.from(0),
-      root: ethers.constants.HashZero
-    })
+    vi.mocked(readContract).mockResolvedValue(thirdPartyRecord({}))
     await expect(fetchRegisteredThirdParty(CHAIN_ID, THIRD_PARTY_ID)).resolves.toEqual({
       registered: false,
       maxItems: 0,

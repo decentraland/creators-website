@@ -1,11 +1,11 @@
 // Whether a published item still matches the entity deployed to the Catalyst — the version the world
 // and the marketplace show. Ported from the legacy builder (modules/item/utils areSynced + the
-// getStatusForStandard selector). The one deliberate divergence is `ignoreTags`: every view here leaves
-// tags out of the comparison, so an item the legacy builder reads as unsynced may read as published here.
+// getStatusForStandard selector). The deliberate divergences are `ignoreTags` and `ignoreMetrics`: every view here
+// leaves both out of the comparison, so an item the legacy builder reads as unsynced may read as published here.
 import { type Entity } from '@dcl/schemas'
 import { type Collection } from './collections'
 import { type CollectionCuration } from './curation'
-import { ItemType, VIDEO_PATH, type Item, type ItemData, type ItemRepresentation } from './items'
+import { ItemType, VIDEO_PATH, type Item, type ItemData, type ItemMetrics, type ItemRepresentation } from './items'
 
 /** Edited after approval (submitted for review or not): the Shop and the world still serve the approved version. */
 export function hasPendingChanges(status: ItemSyncStatus | undefined): boolean {
@@ -29,6 +29,7 @@ type CatalystItemMetadata = {
   description: string
   data?: ItemData
   emoteDataADR74?: ItemData
+  metrics?: ItemMetrics
 }
 
 // Hash of an empty file: directory entries and 0-byte files are never deployed.
@@ -86,6 +87,13 @@ function sameRepresentations(a: ItemRepresentation[], b: ItemRepresentation[]): 
   })
 }
 
+const MODEL_METRICS = ['triangles', 'materials', 'textures', 'meshes', 'bodies', 'entities'] as const
+
+function sameModelMetrics(a: ItemMetrics | undefined, b: ItemMetrics | undefined): boolean {
+  if (!a || !b) return true
+  return MODEL_METRICS.every(key => (a[key] ?? 0) === (b[key] ?? 0))
+}
+
 function sameMetadata(item: Item, metadata: CatalystItemMetadata, deployed: ItemData, options: SyncOptions): boolean {
   if (item.name !== metadata.name || item.description !== metadata.description) return false
   const data = item.data
@@ -98,6 +106,7 @@ function sameMetadata(item: Item, metadata: CatalystItemMetadata, deployed: Item
     }
     return true
   }
+  if (!options.ignoreMetrics && !sameModelMetrics(item.metrics, metadata.metrics)) return false
   return (
     sameList(data.hides, deployed.hides) &&
     sameList(data.replaces, deployed.replaces) &&
@@ -114,6 +123,12 @@ export type SyncOptions = {
    * the Catalyst with the collection's next approval.
    */
   ignoreTags?: boolean
+  /**
+   * Leave a wearable's metrics out: the editor corrects stored metrics that have no geometry, and they ride
+   * along with the owner's next save. Like tags, that alone never reads as a change, and it reaches the Catalyst
+   * with the collection's next approval.
+   */
+  ignoreMetrics?: boolean
 }
 
 /** Whether the builder item and its deployed entity carry the same metadata, representations and files. */
@@ -155,7 +170,7 @@ export function getItemSyncStatus(item: Item, entity: Entity | undefined, contex
   if (!item.isPublished) return ItemSyncStatus.UNPUBLISHED
   if (!context.curationLoaded) return ItemSyncStatus.LOADING
   if (entity) {
-    if (isItemSynced(item, entity, { ignoreTags: context.ignoreTags })) return ItemSyncStatus.SYNCED
+    if (isItemSynced(item, entity, context)) return ItemSyncStatus.SYNCED
     return context.isCurationPending ? ItemSyncStatus.UNDER_REVIEW : ItemSyncStatus.UNSYNCED
   }
   if (!item.isApproved) return ItemSyncStatus.UNDER_REVIEW
@@ -182,6 +197,22 @@ export enum ItemRowStatus {
 /** What the row status needs from the collection's latest review request. */
 export type RowStatusCuration = Pick<CollectionCuration, 'status' | 'updatedAt'>
 
+/** An edit the committee never saw: the item was saved or added after its request was sent back. */
+export function wasEditedAfterRejection(
+  item: Pick<Item, 'updatedAt'>,
+  curation: RowStatusCuration | null | undefined
+): boolean {
+  return curation?.status === 'rejected' && item.updatedAt > curation.updatedAt
+}
+
+/** Whether the creator has something new to show since the request was sent back. */
+export function hasUpdatesSinceRejection(
+  curation: RowStatusCuration | null | undefined,
+  items: Pick<Item, 'updatedAt'>[]
+): boolean {
+  return items.some(item => wasEditedAfterRejection(item, curation))
+}
+
 /**
  * Null while the sync is unknown, and for an unapproved item outside a review: the collection pill tells that
  * story. An edited item reads "rejected" when the committee turned the changes down, which only covers edits
@@ -195,7 +226,7 @@ export function getItemRowStatus(
   curation: RowStatusCuration | null | undefined
 ): ItemRowStatus | null {
   const pending = curation?.status === 'pending'
-  const rejected = curation?.status === 'rejected' && item.updatedAt <= curation.updatedAt
+  const rejected = curation?.status === 'rejected' && !wasEditedAfterRejection(item, curation)
   switch (sync?.status) {
     case ItemSyncStatus.SYNCED:
       return ItemRowStatus.PUBLISHED

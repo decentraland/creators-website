@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ethers } from 'ethers'
+import { maxUint256 } from 'viem'
 import { fetchCollectionListings, fetchItemTradeId } from './listings'
 
 const CONTRACT = '0x00000000000000000000000000000000000000cc'
@@ -20,7 +20,7 @@ const creditsItem = { itemId: '0', price: '50000000000000000000', isOnSale: true
 const manaItem = { itemId: '1', price: '5000000000000000000', isOnSale: true }
 const freeItem = { itemId: '2', price: '0', isOnSale: true }
 const notOnSale = { itemId: '3', price: '7000000000000000000', isOnSale: false }
-const noPrice = { itemId: '4', price: ethers.constants.MaxUint256.toString(), isOnSale: true }
+const noPrice = { itemId: '4', price: maxUint256.toString(), isOnSale: true }
 const malformed = { itemId: '5', price: '1.5', isOnSale: true }
 const catalog = [
   { itemId: '0', priceCredits: 500, source: 'native' },

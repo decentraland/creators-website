@@ -6,7 +6,6 @@ import {
   LinkedItemFilter,
   LinkedItemStatus,
   canPushLinkedItem,
-  fromRemoteItemCuration,
   getLinkedItemStatus,
   getLinkedPublishAction,
   hasLinkedWork,
@@ -151,30 +150,6 @@ describe('item filters', () => {
   it('falls back to All for anything unknown in the URL', () => {
     expect(parseLinkedItemFilter('published')).toBe(LinkedItemFilter.PUBLISHED)
     expect(parseLinkedItemFilter('nope')).toBe(LinkedItemFilter.ALL)
-  })
-})
-
-describe('fromRemoteItemCuration', () => {
-  it('maps the wire shape', () => {
-    expect(
-      fromRemoteItemCuration({
-        id: 'ic1',
-        item_id: 'i1',
-        status: CurationStatus.PENDING,
-        content_hash: 'h',
-        is_mapping_complete: null,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z'
-      })
-    ).toEqual({
-      id: 'ic1',
-      itemId: 'i1',
-      status: 'pending',
-      contentHash: 'h',
-      isMappingComplete: null,
-      createdAt: +new Date('2026-01-01T00:00:00Z'),
-      updatedAt: +new Date('2026-01-02T00:00:00Z')
-    })
   })
 })
 

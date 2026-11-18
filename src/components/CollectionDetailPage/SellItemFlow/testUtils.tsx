@@ -56,8 +56,7 @@ export function makeSession(providerType: ProviderType = ProviderType.INJECTED):
     chainId: 11155111,
     providerType,
     identity: {},
-    signer: {},
-    web3Provider: {}
+    provider: { request: () => Promise.resolve(null) }
   } as unknown as Session
 }
 

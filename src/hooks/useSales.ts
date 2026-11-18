@@ -17,6 +17,7 @@ import { fetchItemTradeId, type ItemListing } from '~/lib/listings'
 import { fetchManaUsdRate } from '~/lib/manaRate'
 import { buildIssueTokensCall, copiesPerItem, flattenTransfers, sendBatchSize, type Transfer } from '~/lib/mint'
 import { captureError } from '~/lib/monitoring'
+import { isExpectedWalletError } from '~/lib/walletErrors'
 import { getMaticChainId } from '~/lib/publishCollection'
 import {
   buildEnableSalesCall,
@@ -31,15 +32,7 @@ import {
   type PricedSale,
   type SalePrice
 } from '~/lib/sales'
-import {
-  OFFCHAIN_MARKETPLACE_TYPES,
-  createTrade,
-  fetchSignatureIndexes,
-  fetchTrade,
-  getTradeDomain,
-  toTradeTypedValues,
-  type UnsignedTrade
-} from '~/lib/trades'
+import { createTrade, fetchSignatureIndexes, fetchTrade, tradeSigner } from '~/lib/trades'
 
 // Collections whose sales this tab enabled: builder-server reports minters from the subgraph, which
 // lags the transaction by a while, so a refetch in between must not bring the Enable Sales step back.
@@ -97,8 +90,10 @@ function orderDeps(session: Session, chainId: number) {
     fetchSignatureIndexes,
     sendTransaction: (call: ContractCall) => sendContractTransaction(session, call),
     waitForTransaction: (hash: string) => waitForTransaction(chainId, hash),
-    signTrade: (trade: UnsignedTrade) =>
-      signTypedData(session, getTradeDomain(chainId), OFFCHAIN_MARKETPLACE_TYPES, toTradeTypedValues(trade)),
+    signTrade: tradeSigner(
+      (domain, types, primaryType, value) => signTypedData(session, domain, types, primaryType, value),
+      chainId
+    ),
     createTrade: (trade: TradeCreation) => createTrade(session.address, trade)
   }
 }
@@ -275,8 +270,10 @@ export function useSendItems(session: Session | null) {
       const size = sendBatchSize(transfers)
       const code = errorCode(error)
       track('Mint items error', { collectionId: collection.id, error: code, ...size })
-      // A wallet cancel is the creator's choice; anything else (revert, relayer refusal, RPC) is ours to see.
-      if (code !== 'rejected') captureError(error, { flow: 'send_items', collectionId: collection.id, ...size })
+      // A wallet cancel or a wallet on the wrong account is the creator's; anything else (revert, relayer refusal,
+      // RPC) is ours to see.
+      if (!isExpectedWalletError(error))
+        captureError(error, { flow: 'send_items', collectionId: collection.id, ...size })
     }
   })
 }

@@ -9,6 +9,7 @@ import * as Sentry from '@sentry/react'
 import { config } from '~/config'
 import { currentAddress } from '~/lib/currentAddress'
 import { afterLoadIdle } from '~/lib/idle'
+import { errorChain } from '~/lib/walletErrors'
 
 export type ErrorContext = Record<string, unknown>
 
@@ -47,13 +48,18 @@ export function toReportable(value: unknown): unknown {
  * promotes them to tags — "how many publishes died on an RPC 401 this week" becomes answerable.
  */
 export function rpcFactsFrom(value: unknown): ErrorContext {
-  if (!value || typeof value !== 'object') return {}
-  const raw = value as { code?: unknown; data?: unknown }
   const facts: ErrorContext = {}
-  if (typeof raw.code === 'number' || typeof raw.code === 'string') facts.rpc_code = raw.code
-  if (raw.data && typeof raw.data === 'object') {
-    const status = (raw.data as { httpStatus?: unknown }).httpStatus
-    if (typeof status === 'number' || typeof status === 'string') facts.http_status = status
+  // Innermost first: the wallet's or node's own code, not a wrapper's generic one (viem's UnknownRpcError is -1).
+  for (const link of errorChain(value).reverse()) {
+    if (typeof link !== 'object' || link === null) continue
+    const raw = link as { code?: unknown; data?: unknown }
+    if (facts.rpc_code === undefined && (typeof raw.code === 'number' || typeof raw.code === 'string')) {
+      facts.rpc_code = raw.code
+    }
+    if (facts.http_status === undefined && raw.data && typeof raw.data === 'object') {
+      const status = (raw.data as { httpStatus?: unknown }).httpStatus
+      if (typeof status === 'number' || typeof status === 'string') facts.http_status = status
+    }
   }
   return facts
 }
@@ -219,7 +225,15 @@ export function initSentry(): void {
     tracesSampleRate: 0.01,
     replaysSessionSampleRate: REPLAY_SESSION_RATE / REPLAY_LOAD_RATE,
     replaysOnErrorSampleRate: 1,
-    sendDefaultPii: false,
+    // Every category defaults to on.
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      httpBodies: [],
+      urlQueryParams: false,
+      stackFrameVariables: false
+    },
     // Expected user actions, not bugs.
     ignoreErrors: [/user rejected/i, /user denied/i, 'ResizeObserver loop limit exceeded'],
     beforeSend: scrubEvent,

@@ -2,8 +2,7 @@
 // charges whatever RaritiesWithOracle says at execution. Before any wallet prompt the quote is checked
 // against that contract, so a wrong or poisoned server figure can neither over-approve MANA nor
 // over-debit credits.
-import { type ethers } from 'ethers'
-import { ContractName, getContract } from 'decentraland-transactions'
+import { ContractName, getContract } from '~/lib/chain/contracts'
 import { readContract } from '~/lib/auth'
 import { type Item } from './items'
 import { type PublicationFee } from './publishFee'
@@ -28,8 +27,8 @@ export type RarityPriceReader = (rarityName: string, chainId: number) => Promise
 /** RaritiesWithOracle.getRarityByName(name).price: the MANA a single item of that rarity costs right now. */
 export async function fetchOnChainRarityPrice(rarityName: string, chainId: number): Promise<bigint> {
   const contract = getContract(ContractName.RaritiesWithOracle, chainId)
-  const rarity = await readContract<{ price: ethers.BigNumber }>(contract, 'getRarityByName', [rarityName])
-  return BigInt(rarity.price.toString())
+  const rarity = await readContract<{ price: bigint }>(contract, 'getRarityByName', [rarityName])
+  return rarity.price
 }
 
 /** `amountWei` plus the same tolerance, rounded up: what an approval must cover so the publish cannot revert on drift. */

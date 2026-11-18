@@ -2,14 +2,21 @@
 // marketplace applies it to the collection's listings at checkout, so the listings keep their price and the
 // discount ends by itself when its window closes. marketplace-server stores and validates the coupon
 // (`/v1/coupons`); this module builds, signs, stores, lists and ends one. Ported from the shop's lib/coupons.
-import { ethers } from 'ethers'
 import { Network, type TradeChecks } from '@dcl/schemas'
-import { ContractName, getContract, getContractName, getCouponManager } from 'decentraland-transactions'
+import {
+  ContractName,
+  getContract,
+  getCouponManager,
+  getMarketplaceName,
+  type ContractData,
+  type MarketplaceName
+} from '~/lib/chain/contracts'
 import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
+import { encodeAbiParameters, numberToHex, parseAbiParameters, recoverTypedDataAddress, toHex, type Hex } from 'viem'
 import { config } from '~/config'
-import { WrongAccountError, WrongChainError, signedFetch, type ContractCall, type ContractData } from '~/lib/auth'
+import { signedFetch, type ContractCall, type TypedDataDomain, type TypedDataTypes } from '~/lib/auth'
 import { OFFCHAIN_MARKETPLACE_TYPES, getOffchainMarketplaceContract, toTypedChecks } from '~/lib/trades'
-import { isWalletRejection } from '~/lib/walletErrors'
+import { isWalletRejection, isWalletStateError } from '~/lib/walletErrors'
 
 /** Percentage discount, in parts per million on-chain: 30% is 300_000. The only type this app signs. */
 export const DISCOUNT_TYPE_RATE = 1
@@ -59,7 +66,7 @@ export type CouponCreation = {
 
 type CouponContracts = { couponManager: ContractData & { name: string; version: string }; coupon: string }
 
-function managerOf(marketplace: ContractName, chainId: number): CouponContracts['couponManager'] {
+function managerOf(marketplace: MarketplaceName, chainId: number): CouponContracts['couponManager'] {
   const manager = getCouponManager(marketplace, chainId)
   return { ...manager, chainId }
 }
@@ -71,9 +78,10 @@ function managerOf(marketplace: ContractName, chainId: number): CouponContracts[
  */
 export function getCouponContracts(chainId: number): CouponContracts | null {
   try {
-    const marketplace = getOffchainMarketplaceContract(chainId)
+    const marketplace = getMarketplaceName(getOffchainMarketplaceContract(chainId).address)
+    if (!marketplace) return null
     return {
-      couponManager: managerOf(getContractName(marketplace.address), chainId),
+      couponManager: managerOf(marketplace, chainId),
       coupon: getContract(ContractName.CollectionDiscountCoupon, chainId).address
     }
   } catch {
@@ -86,14 +94,16 @@ export function getCouponContracts(chainId: number): CouponContracts | null {
  * pairs with none. A discount reaches a listing only when this is the manager it was signed against.
  */
 export function getCouponManagerForMarketplace(marketplaceAddress: string, chainId: number): string | null {
+  const marketplace = getMarketplaceName(marketplaceAddress)
+  if (!marketplace) return null
   try {
-    return getCouponManager(getContractName(marketplaceAddress), chainId).address.toLowerCase()
+    return getCouponManager(marketplace, chainId).address.toLowerCase()
   } catch {
     return null
   }
 }
 
-const MARKETPLACES_WITH_COUPONS = [ContractName.OffChainMarketplaceV2, ContractName.OffChainMarketplaceV3]
+const MARKETPLACES_WITH_COUPONS = [ContractName.OffChainMarketplaceV2, ContractName.OffChainMarketplaceV3] as const
 
 /** The registry's manager at `address` on `chainId`, so a cancellation is only ever sent to a contract it vouches for. */
 function findCouponManager(chainId: number, address: string): CouponContracts['couponManager'] | null {
@@ -129,10 +139,14 @@ export function collectionsRoot(collections: string[]): string {
 
 /** `abi.encode(CollectionDiscountCouponData)`: what the creator signs and the contract decodes. */
 export function encodeCouponData(discount: number, root: string, discountType = DISCOUNT_TYPE_RATE): string {
-  return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256', 'bytes32'], [discountType, discount, root])
+  return encodeAbiParameters(parseAbiParameters('uint256, uint256, bytes32'), [
+    BigInt(discountType),
+    BigInt(discount),
+    root as Hex
+  ])
 }
 
-export const COUPON_TYPES: Record<string, ethers.TypedDataField[]> = {
+export const COUPON_TYPES: TypedDataTypes = {
   Coupon: [
     { name: 'checks', type: 'Checks' },
     { name: 'couponAddress', type: 'address' },
@@ -142,11 +156,11 @@ export const COUPON_TYPES: Record<string, ethers.TypedDataField[]> = {
   ExternalCheck: OFFCHAIN_MARKETPLACE_TYPES.ExternalCheck
 }
 
-export function couponDomain(chainId: number, contracts: CouponContracts): ethers.TypedDataDomain {
+export function couponDomain(chainId: number, contracts: CouponContracts): TypedDataDomain {
   return {
     name: contracts.couponManager.name,
     version: contracts.couponManager.version,
-    salt: ethers.utils.hexZeroPad(ethers.utils.hexlify(chainId), 32),
+    salt: numberToHex(chainId, { size: 32 }),
     verifyingContract: contracts.couponManager.address
   }
 }
@@ -204,22 +218,24 @@ export function validateDiscountTerms(terms: DiscountTerms, now = Date.now()): v
 export type DiscountFailureReason = 'rejected' | 'pending' | 'wallet' | 'unconfirmed' | 'refused' | 'generic'
 
 export class DiscountError extends Error {
-  constructor(
-    public reason: DiscountFailureReason,
-    message: string = reason
-  ) {
+  reason: DiscountFailureReason
+  /** The underlying failure, when this one wraps it. */
+  cause?: unknown
+
+  constructor(reason: DiscountFailureReason, message: string = reason, cause?: unknown) {
     super(message)
     this.name = 'DiscountError'
+    this.reason = reason
+    this.cause = cause
   }
 }
 
 export function toDiscountError(error: unknown): DiscountError {
   if (error instanceof DiscountError) return error
   const message = error instanceof Error ? error.message : String(error)
-  if (isWalletRejection(error)) return new DiscountError('rejected', message)
-  if (error instanceof WrongAccountError || error instanceof WrongChainError)
-    return new DiscountError('wallet', message)
-  return new DiscountError('generic', message)
+  if (isWalletRejection(error)) return new DiscountError('rejected', message, error)
+  if (isWalletStateError(error)) return new DiscountError('wallet', message, error)
+  return new DiscountError('generic', message, error)
 }
 
 export type CreateDiscountDeps = {
@@ -229,8 +245,9 @@ export type CreateDiscountDeps = {
     signer: string
   ) => Promise<{ contractSignatureIndex: number; signerSignatureIndex: number }>
   signTypedData: (
-    domain: ethers.TypedDataDomain,
-    types: Record<string, ethers.TypedDataField[]>,
+    domain: TypedDataDomain,
+    types: TypedDataTypes,
+    primaryType: string,
     value: Record<string, unknown>
   ) => Promise<string>
   postCoupon: (payload: CouponCreation) => Promise<CollectionDiscount>
@@ -262,7 +279,7 @@ export async function createDiscount(
       uses: params.uses ?? UNCAPPED_USES,
       expiration: params.endsAtMs,
       effective: params.startsAtMs ?? now,
-      salt: deps.randomSalt ? deps.randomSalt() : ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+      salt: deps.randomSalt ? deps.randomSalt() : toHex(crypto.getRandomValues(new Uint8Array(32))),
       contractSignatureIndex: indexes.contractSignatureIndex,
       signerSignatureIndex: indexes.signerSignatureIndex,
       allowedRoot: '0x',
@@ -273,6 +290,7 @@ export async function createDiscount(
     const signature = await deps.signTypedData(
       couponDomain(params.chainId, contracts),
       COUPON_TYPES,
+      'Coupon',
       couponTypedValues(checks, contracts.coupon, data)
     )
     deps.onSigned?.()
@@ -431,7 +449,7 @@ export function discountPct(discount: Pick<CollectionDiscount, 'discount'>): num
  * manager succeeds and changes nothing where the coupon redeems. The CouponManager takes no meta-transactions, so
  * this has to be sent from the wallet on the coupon's chain.
  */
-export function buildEndDiscountCall(discount: CollectionDiscount): ContractCall {
+export async function buildEndDiscountCall(discount: CollectionDiscount): Promise<ContractCall> {
   const manager = findCouponManager(discount.chainId, discount.couponManager)
   if (!manager) {
     throw new DiscountError('generic', `Unknown coupon manager ${discount.couponManager} on chain ${discount.chainId}`)
@@ -444,12 +462,13 @@ export function buildEndDiscountCall(discount: CollectionDiscount): ContractCall
   const domain = couponDomain(discount.chainId, { couponManager: manager, coupon: discount.couponAddress })
   let recovered: string
   try {
-    recovered = ethers.utils.verifyTypedData(
+    recovered = await recoverTypedDataAddress({
       domain,
-      COUPON_TYPES,
-      { checks, couponAddress: discount.couponAddress, data },
-      discount.signature
-    )
+      types: COUPON_TYPES,
+      primaryType: 'Coupon',
+      message: { checks, couponAddress: discount.couponAddress, data },
+      signature: discount.signature as Hex
+    } as Parameters<typeof recoverTypedDataAddress>[0])
   } catch {
     recovered = ''
   }
@@ -474,7 +493,8 @@ export function buildEndDiscountCall(discount: CollectionDiscount): ContractCall
 }
 
 export type EndDiscountDeps = {
-  sendTransaction: (call: ContractCall) => Promise<{ hash: string; nonce?: number }>
+  /** `onSent` gets the hash the moment the wallet returns it, before the send call itself resolves. */
+  sendTransaction: (call: ContractCall, onSent: (txHash: string) => void) => Promise<{ hash: string; nonce?: number }>
   waitForTransaction: (txHash: string) => Promise<boolean>
   /** The wallet prompt is over; the cancellation is mining. */
   onSigned?: () => void
@@ -486,21 +506,23 @@ export type EndDiscountDeps = {
 export async function endDiscount(discount: CollectionDiscount, deps: EndDiscountDeps): Promise<void> {
   // Once the cancellation is broadcast, only a confirmed revert is a failure: a timeout, an RPC error while
   // polling or a wallet that throws after broadcasting all leave it possibly mining, and a retry would pay twice.
-  const call = buildEndDiscountCall(discount)
+  const call = await buildEndDiscountCall(discount)
+  let broadcast: string | undefined
   let txHash: string
   let nonce: number | undefined
   try {
-    ;({ hash: txHash, nonce } = await deps.sendTransaction(call))
+    ;({ hash: txHash, nonce } = await deps.sendTransaction(call, hash => {
+      broadcast = hash
+      deps.onBroadcast?.(hash)
+      deps.onSigned?.()
+    }))
   } catch (error) {
-    const broadcast = (error as { transactionHash?: string } | null)?.transactionHash
-    if (broadcast) {
-      deps.onBroadcast?.(broadcast)
-      throw new DiscountError('pending', `The end discount transaction ${broadcast} may still mine`)
-    }
+    if (broadcast) throw new DiscountError('pending', `The end discount transaction ${broadcast} may still mine`)
     throw toDiscountError(error)
   }
+  // Recorded again with the nonce, which lets a later check tell a replaced cancellation from a pending one.
   deps.onBroadcast?.(txHash, nonce)
-  deps.onSigned?.()
+  if (!broadcast) deps.onSigned?.()
   let mined: boolean
   try {
     mined = await deps.waitForTransaction(txHash)

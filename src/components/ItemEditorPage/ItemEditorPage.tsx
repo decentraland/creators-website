@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { BodyShape, PreviewRenderer, type ContractNetwork, type IPreviewController } from '@dcl/schemas'
-import { ArrowBackIosNew, PersonOutline as PersonOutlineIcon } from '@mui/icons-material'
+import { BodyShape, type ContractNetwork } from '@dcl/schemas'
+import { ArrowBackIosNewIcon, PersonOutlineIcon } from '~/components/Icons'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { AvatarPreview } from '~/components/AvatarPreview'
 import { Button } from '~/components/Button'
@@ -21,15 +21,19 @@ import {
   useCollectionStatus,
   useSaveCollection
 } from '~/hooks/useCollection'
-import { useCollectionCuration, useCommittee } from '~/hooks/useCuration'
+import { useCommittee } from '~/hooks/useCommittee'
+import { useCollectionCuration } from '~/hooks/useCuration'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
+import { FeatureFlag } from '~/lib/featureFlags'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { track } from '~/lib/analytics'
 import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidation'
 import { useRerunValidation } from '~/hooks/useRerunValidation'
-import { useObjectURL } from '~/hooks/useObjectURL'
+import { useRepairedItemMetrics } from '~/hooks/useRepairedItemMetrics'
 import { thumbnailValidationKey, useThumbnailValidation } from '~/hooks/useThumbnailValidation'
-import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
-import { fetchStoredThumbnail, useSaveItem } from '~/hooks/useSaveItem'
+import { useCatalystItemSizes } from '~/hooks/useItemSize'
+import { SaveInProgressError, useExclusiveSave } from '~/hooks/useExclusiveSave'
+import { fetchStoredThumbnail, useSaveItem, type SaveItemVariables } from '~/hooks/useSaveItem'
 import { captureError } from '~/lib/monitoring'
 import { springBonesFetcher } from '~/hooks/useSpringBones'
 import { useTranslation } from '~/intl'
@@ -44,13 +48,15 @@ import {
   type Collection
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
-import { getCurationState, curationListUrl } from '~/lib/curation'
+import { ReviewStage, getCurationState, getReviewStage, curationListUrl } from '~/lib/curation'
+import { useCollectionEvents } from '~/hooks/useCollectionEvents'
+import { getAutomatedIssuesByItem } from '~/lib/events'
 import { toFileChangeSaveable, toPreviewItem, toSaveableItem, type ItemFileChange } from '~/lib/itemDraft'
-import { type BuiltItem } from '~/lib/itemFactory'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
 import { IMAGE_PATH, ITEM_EXTENSIONS } from '~/lib/itemFiles'
-import { ItemType, canDeleteItem, canEditItemDetails, isSocialEmote, type Item } from '~/lib/items'
+import { getItemSizeLimit, isItemTooBigError, type ItemSize } from '~/lib/itemSize'
+import { ItemType, canDeleteItem, canEditItemDetails, type Item } from '~/lib/items'
 import { isLinkedItemPublished } from '~/lib/linkedItemStatus'
 import {
   LINKED_COLLECTION_NAME_MAX_LENGTH,
@@ -70,11 +76,12 @@ import {
 } from '~/lib/springBones'
 import { selectAvatarAttributes, useAvatarPreview } from '~/store/avatarPreview'
 import { useWallet } from '~/store/wallet'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { AvatarCustomizerDrawer, AvatarCustomizerToggle } from './AvatarCustomizer'
 import { CollectionPicker } from './CollectionPicker'
-import { ItemsSidebar } from './ItemsSidebar'
+import { ItemsSidebar, type EditorBack } from './ItemsSidebar'
 import { MobilePreview } from './MobilePreview'
+import { SceneBoundariesToggle } from './SceneBoundariesToggle'
 import { PlaybackBar } from './PlaybackBar'
 import { PropertiesPanel, type SpringBonesFormProps } from './PropertiesPanel'
 import { EditorPreviewLaunch } from './EditorPreviewLaunch'
@@ -84,7 +91,8 @@ import { ValidationBadge } from '~/components/ValidationBadge'
 import { getValidationStatus, itemValidationContext, type ValidationSource } from '~/lib/validation'
 import { useEditorLayout } from './useEditorLayout'
 import { useItemForm } from './useItemForm'
-import * as S from './ItemEditorPage.styles'
+import styles from './ItemEditorPage.module.css'
+import { type WearablePreviewController } from '~/components/WearablePreview'
 
 const PREVIEW_ID = 'item-editor-preview'
 const NOT_FOUND_STATUSES = [401, 403, 404]
@@ -118,7 +126,7 @@ const ItemEditorPage = () => {
   // Until the committee answers, a review link can't tell a curator from someone with no access.
   const isResolvingReviewer = searchParams.get('reviewing') === 'true' && !!address && committee.isLoading
   const showToast = useNotifications(state => state.showToast)
-  const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
+  const isMobile = useMediaQuery(media.maxWidth('mobile'))
 
   const collectionQuery = useCollection(address, collectionId ?? undefined)
   // Linked collections belong to a third party: its managers, not the collection's roles, may edit them.
@@ -141,13 +149,36 @@ const ItemEditorPage = () => {
   const collectionStatus = useCollectionStatus(canReadCuration ? address : undefined, collectionQuery.data)
   const itemsQuery = useAllCollectionItems(address, collectionId ?? undefined)
   const baseWearables = useBaseWearables()
-  const pickedRenderer = usePreviewRenderer()
   const saveItem = useSaveItem(address)
+  const saveItemAsync = saveItem.mutateAsync
+  const { isSaving, run: runSave } = useExclusiveSave()
   const saveCollection = useSaveCollection(address)
   const [isRenameOpen, setRenameOpen] = useState(false)
 
   const collection = collectionQuery.data
-  const mobileCuration = useCollectionCuration(mode === 'review' ? address : undefined, collection)
+  // Linked collections have no owner: their third party's managers are who works on them.
+  const hasRole = !!collection && (isLinked ? isManager : hasCollectionRole(collection, address))
+  // The automated review locks the items it judges and dresses them with its findings.
+  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION_REVIEW_FLOW).enabled
+  const reviewCuration = useCollectionCuration(
+    mode === 'review' || (canReadCuration && autoCuration) ? address : undefined,
+    collection
+  )
+  const { events: reviewEvents } = useCollectionEvents(canReadCuration ? address : undefined, collection)
+  const reviewStage = useMemo(
+    () => (collection ? getReviewStage(collection, reviewCuration.data ?? null, reviewEvents) : null),
+    [collection, reviewCuration.data, reviewEvents]
+  )
+  const reviewLocked = reviewStage === ReviewStage.AUTOMATED_REVIEWING
+  const curatorRequest = useMemo(() => {
+    const request = reviewCuration.data
+    if (mode === 'review' || reviewStage !== ReviewStage.REJECTED_BY_CURATOR || !request) return undefined
+    return { reasons: request.rejectionReasons ?? [], message: request.rejectionMessage }
+  }, [mode, reviewStage, reviewCuration.data])
+  const automatedIssues = useMemo(
+    () => getAutomatedIssuesByItem(reviewEvents ?? [], itemsQuery.data ?? EMPTY_ITEMS),
+    [reviewEvents, itemsQuery.data]
+  )
   const items = itemsQuery.data ?? EMPTY_ITEMS
   // A linked collection under review: the sidebar sets apart the items this review is about.
   const pendingLinked = usePendingLinkedItems(address, mode === 'review' && isLinked ? collection : undefined)
@@ -157,9 +188,12 @@ const ItemEditorPage = () => {
       pendingLinked.data ? { pendingIds: new Set(pendingLinked.data.map(item => item.id)), reviewedIds } : undefined,
     [pendingLinked.data, reviewedIds]
   )
-  const selected = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
-  // Unity cannot play a social emote's extra armatures: those items always preview in Babylon.
-  const renderer = selected && isSocialEmote(selected) ? PreviewRenderer.BABYLON : pickedRenderer
+  const resolved = useMemo(() => resolveSelectedItem(items, itemParam), [items, itemParam])
+  const repairedMetrics = useRepairedItemMetrics(resolved)
+  const selected = useMemo(
+    () => (resolved && repairedMetrics ? { ...resolved, metrics: repairedMetrics } : resolved),
+    [resolved, repairedMetrics]
+  )
 
   // Avatar state (session-only store).
   const bodyShape = useAvatarPreview(state => state.bodyShape)
@@ -230,14 +264,11 @@ const ItemEditorPage = () => {
     [previewSelected]
   )
   const validation = useModelValidation(validationSource, validationCtx)
-  // An unsaved thumbnail is checked as picked; otherwise the stored one.
   const thumbnailSource = useMemo(() => {
     if (isMobile) return null
-    if (form.draft.thumbnail) return { kind: 'blob', blob: form.draft.thumbnail } as const
     return selected?.contents[selected.thumbnail] ? ({ kind: 'item', item: selected } as const) : null
-  }, [form.draft.thumbnail, selected, isMobile])
+  }, [selected, isMobile])
   const thumbnailValidation = useThumbnailValidation(thumbnailSource)
-  const draftThumbnailUrl = useObjectURL(form.draft.thumbnail)
   const validationSubject = useMemo(() => {
     if (!previewSelected) return undefined
     const storedThumbnail = previewSelected.contents[previewSelected.thumbnail]
@@ -246,19 +277,30 @@ const ItemEditorPage = () => {
       type: previewSelected.type,
       category: previewSelected.data.category,
       rarity: previewSelected.rarity,
-      thumbnail: draftThumbnailUrl ?? (storedThumbnail ? getContentsStorageUrl(storedThumbnail) : null)
+      thumbnail: storedThumbnail ? getContentsStorageUrl(storedThumbnail) : null
     }
-  }, [previewSelected, draftThumbnailUrl])
-  const validationIssues = useMemo(
-    () =>
-      validation.data || thumbnailValidation.data
-        ? [...(validation.data?.issues ?? []), ...(thumbnailValidation.data?.issues ?? [])]
-        : undefined,
-    [validation.data, thumbnailValidation.data]
-  )
+  }, [previewSelected])
+  const validationIssues = useMemo(() => {
+    const automated = selectedId ? automatedIssues.get(selectedId) : undefined
+    if (!validation.data && !thumbnailValidation.data && !automated) return undefined
+    return [...(validation.data?.issues ?? []), ...(thumbnailValidation.data?.issues ?? []), ...(automated ?? [])]
+  }, [validation.data, thumbnailValidation.data, automatedIssues, selectedId])
   const validationStatus = useMemo(
     () => getValidationStatus(validationIssues, validation.isLoading || thumbnailValidation.isLoading),
     [validationIssues, validation.isLoading, thumbnailValidation.isLoading]
+  )
+  // The stored files' size, against the limit of the category being edited (skins get 9 MB). A new thumbnail or
+  // rarity image is measured exactly when it is saved.
+  const sizeItems = useMemo(() => (selected ? [selected] : []), [selected])
+  const storedSizes = useCatalystItemSizes(sizeItems)
+  const storedBytes = selected ? storedSizes.sizes.get(selected.id)?.bytes : undefined
+  const sizeCategory = form.draft.category ?? selected?.data.category
+  const itemSize = useMemo<ItemSize | null>(
+    () =>
+      selected && storedBytes !== undefined
+        ? { bytes: storedBytes, limit: getItemSizeLimit(selected.type, sizeCategory) }
+        : null,
+    [selected, storedBytes, sizeCategory]
   )
   const rerunValidation = useRerunValidation()
   const rerunSelectedValidation = useCallback(async () => {
@@ -279,7 +321,7 @@ const ItemEditorPage = () => {
   )
 
   // Preview controller: spring bones are pushed on edits (debounced), on every load and on play.
-  const [controller, setController] = useState<IPreviewController | null>(null)
+  const [controller, setController] = useState<WearablePreviewController | null>(null)
   const [loadCount, setLoadCount] = useState(0)
   const onPreviewLoad = useCallback(() => setLoadCount(count => count + 1), [])
   // Reported for diagnostics only: the iframe shows its own error state.
@@ -371,6 +413,7 @@ const ItemEditorPage = () => {
     !!collection &&
     !!selected &&
     !!address &&
+    !reviewLocked &&
     (isLinked ? isManager && !isCollectionLocked(collection) : canEditItemDetails(collection, selected, address))
   const canDelete =
     editable &&
@@ -379,13 +422,60 @@ const ItemEditorPage = () => {
       ? linkedCurations.isSuccess && !isLinkedItemPublished(selected, linkedCurations.data.get(selected.id) ?? null)
       : canDeleteItem(collection, address))
 
+  // Metrics are part of the Catalyst entity hash, so nothing published is rewritten behind its owner's back: there
+  // the corrected numbers are shown and ride along with the owner's next save.
+  const repairAttemptedRef = useRef(new Set<string>())
+  const isLinkedItemDraft =
+    !isLinked ||
+    (!!selected &&
+      linkedCurations.isSuccess &&
+      !isLinkedItemPublished(selected, linkedCurations.data.get(selected.id) ?? null))
+  // A linked item's status is its content hash, so on one sent for review the corrected metrics would ask for a push.
+  const saveBase = isLinkedItemDraft ? selected : resolved
+  const isResolvingRepairGate =
+    isResolvingReviewer || isSaving || (isLinked && (thirdParty.isLoading || linkedCurations.isLoading))
+  useEffect(() => {
+    if (!selected || !repairedMetrics || repairAttemptedRef.current.has(selected.id)) return
+    if (!collection || isResolvingRepairGate) return
+    repairAttemptedRef.current.add(selected.id)
+    const itemId = selected.id
+    if (!(editable && isDraftCollection && !selected.isPublished && isLinkedItemDraft && !form.isDirty)) {
+      track('Item metrics repaired', { itemId, saved: false })
+      return
+    }
+    // A failed save is reported by the query client's mutation handler.
+    runSave(() => saveItemAsync({ item: selected, blobs: {}, background: true })).then(
+      saved => {
+        queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
+          current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
+        )
+        track('Item metrics repaired', { itemId, saved: true })
+      },
+      () => track('Item metrics repaired', { itemId, saved: false })
+    )
+  }, [
+    selected,
+    repairedMetrics,
+    collection,
+    isResolvingRepairGate,
+    editable,
+    isDraftCollection,
+    isLinkedItemDraft,
+    form.isDirty,
+    runSave,
+    saveItemAsync,
+    queryClient,
+    address,
+    collectionId
+  ])
+
   async function persist(item: Item) {
     const built = await toSaveableItem(item, form.draft, {
       springBones:
         springBones.models.length > 0 ? (mergeSpringBonesIntoItem(form.springBoneParams) ?? null) : undefined,
       fetchThumbnail: fetchStoredThumbnail
     })
-    if (form.draft.rarity !== item.rarity && !form.draft.thumbnail && !built.blobs[IMAGE_PATH]) {
+    if (form.draft.rarity !== item.rarity && !built.blobs[IMAGE_PATH]) {
       showToast(t('item_editor.image_refresh_skipped'), { type: 'warn' })
     }
     const saved = await commit(item, built)
@@ -395,8 +485,8 @@ const ItemEditorPage = () => {
   }
 
   /** PUTs the built item, refreshes the cached list and toasts. */
-  async function commit(item: Item, built: BuiltItem): Promise<Item> {
-    const saved = await saveItem.mutateAsync({ ...built, previousVideo: item.video })
+  async function commit(item: Item, save: SaveItemVariables): Promise<Item> {
+    const saved = await saveItemAsync({ ...save, previous: item, previousVideo: item.video })
     queryClient.setQueryData<Item[]>(allCollectionItemsKey(address, collectionId ?? undefined), current =>
       current?.map(candidate => (candidate.id === saved.id ? saved : candidate))
     )
@@ -404,8 +494,13 @@ const ItemEditorPage = () => {
     return saved
   }
 
-  // A locked collection is the creator's to wait out; anything else is ours to look into.
+  // A locked collection is the creator's to wait out, an item over its size limit the creator's to slim down;
+  // anything else is ours to look into.
   function reportSaveError(error: unknown, flow: 'item_save' | 'item_file_change') {
+    if (isItemTooBigError(error)) {
+      showToast(t('add_items_modal.file_error.size_exceeded', error.messageParams), { type: 'error' })
+      return
+    }
     console.error('Item save failed:', error)
     const locked = error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS
     if (!locked) captureError(error, { flow, itemId: selectedIdRef.current ?? undefined })
@@ -417,8 +512,12 @@ const ItemEditorPage = () => {
   // model, so they move with the file); every other unsaved panel edit stays pending, except what the
   // file change decided (category, thumbnail).
   async function saveFileChange(change: ItemFileChange): Promise<void> {
-    if (!selected) throw new Error('No item selected')
-    const base = selected
+    if (!saveBase) throw new Error('No item selected')
+    const base = saveBase
+    await runSave(() => applyFileChange(base, change))
+  }
+
+  async function applyFileChange(base: Item, change: ItemFileChange): Promise<void> {
     try {
       const springBonesData = await carrySpringBonesForSave(
         springBonesFetcher(queryClient),
@@ -436,23 +535,41 @@ const ItemEditorPage = () => {
           form.dispatch({ type: 'setCategory', category: change.category })
           form.dispatch({ type: 'setHides', hides: saved.data.hides ?? [] })
         }
-        if (change.thumbnail) form.dispatch({ type: 'setThumbnail', thumbnail: null })
       }
     } catch (error) {
-      reportSaveError(error, 'item_file_change')
+      // The modal shows an oversized result itself, next to the file that caused it.
+      if (!isItemTooBigError(error)) reportSaveError(error, 'item_file_change')
+      throw error
+    }
+  }
+
+  // A new thumbnail saves on confirm, like a file change, so the size the panel shows is always the stored one.
+  // The modal shows a failure itself and stays open.
+  async function saveThumbnail(thumbnail: Blob): Promise<void> {
+    if (!selected || !saveBase) return
+    try {
+      await runSave(() => commit(saveBase, { item: saveBase, thumbnail }))
+    } catch (error) {
+      const expected =
+        isItemTooBigError(error) ||
+        error instanceof SaveInProgressError ||
+        (error instanceof BuilderServerError && error.status === COLLECTION_LOCKED_STATUS)
+      if (!expected) captureError(error, { flow: 'item_save', itemId: selected.id })
       throw error
     }
   }
 
   function save() {
-    if (!selected) return
+    if (!selected || !saveBase) return
     const missing = getShapesMissingSpringBones(form.springBoneParams, springBones.bonesByHash)
     if (missing.length > 0 && !springWarning) {
       setSpringWarning(true)
       return
     }
     setSpringWarning(false)
-    persist(selected).catch((error: unknown) => reportSaveError(error, 'item_save'))
+    runSave(() => persist(saveBase)).catch((error: unknown) => {
+      if (!(error instanceof SaveInProgressError)) reportSaveError(error, 'item_save')
+    })
   }
 
   // Read off `form` before the memo: `form` itself is a fresh object every render, so depending on it
@@ -493,7 +610,9 @@ const ItemEditorPage = () => {
   const isLoading =
     !restored ||
     isResolvingReviewer ||
-    (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading))
+    (!!address && !!collectionId && (collectionQuery.isLoading || itemsQuery.isLoading || thirdParty.isLoading)) ||
+    // Whether a viewer without a role gets a back link depends on the committee, so wait for it.
+    (mode === 'edit' && !!collection && !hasRole && committee.isLoading)
   const isThirdPartyNotFound =
     thirdParty.isError &&
     thirdParty.error instanceof BuilderServerError &&
@@ -504,8 +623,9 @@ const ItemEditorPage = () => {
       ((collectionQuery.isError &&
         collectionQuery.error instanceof BuilderServerError &&
         NOT_FOUND_STATUSES.includes(collectionQuery.error.status)) ||
-        // Drafts are private to their roles; published collections, linked ones included, open read-only to any
-        // signer (curators review through mode === 'review', which skips the gate).
+        // Drafts are private to their roles; published collections, linked ones included, open read-only here to any
+        // signer, the editor being their only public view (curators review through mode === 'review', which skips
+        // the gate).
         (!!collection &&
           mode === 'edit' &&
           (isLinked
@@ -517,80 +637,74 @@ const ItemEditorPage = () => {
     !!collectionId &&
     (collectionQuery.isError || itemsQuery.isError || (thirdParty.isError && !isThirdPartyNotFound))
 
-  const preview =
-    renderer === undefined ? null : (
-      <AvatarPreview
-        // The renderer is baked into the iframe URL at mount, so a switch has to remount the preview.
-        key={renderer}
-        id={PREVIEW_ID}
-        source={source}
-        avatar={avatar}
-        emote={emote}
-        unity={renderer === PreviewRenderer.UNITY}
-        onLoad={onPreviewLoad}
-        onError={onPreviewError}
-        onController={setController}
-      >
-        <PlaybackBar
-          previewId={PREVIEW_ID}
-          controller={controller}
-          collectionEmotes={collectionEmotes}
-          previewedWearables={previewedWearables}
-          subjectEmoteId={subjectEmote?.id ?? null}
+  const preview = (
+    <AvatarPreview
+      id={PREVIEW_ID}
+      source={source}
+      avatar={avatar}
+      emote={emote}
+      onLoad={onPreviewLoad}
+      onError={onPreviewError}
+      onController={setController}
+    >
+      <PlaybackBar
+        previewId={PREVIEW_ID}
+        controller={controller}
+        collectionEmotes={collectionEmotes}
+        previewedWearables={previewedWearables}
+        subjectEmoteId={subjectEmote?.id ?? null}
+      />
+      <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
+      <SceneBoundariesToggle trigger="editor" />
+      {selected && (
+        <ValidationBadge
+          status={validationStatus}
+          issues={validationIssues ?? []}
+          subject={validationSubject}
+          onRerun={rerunSelectedValidation}
+          onOpen={onValidationOpen}
         />
-        <AvatarCustomizerToggle open={isCustomizerOpen} onToggle={() => setCustomizerOpen(open => !open)} />
-        {selected && (
-          <ValidationBadge
-            status={validationStatus}
-            issues={validationIssues ?? []}
-            subject={validationSubject}
-            onRerun={rerunSelectedValidation}
-            onOpen={onValidationOpen}
-          />
-        )}
-        {/* Linked collections have no owner: their third party's managers are who works on them. */}
-        {collection &&
-          (mode === 'review' ||
-            (mode === 'edit' && (isLinked ? isManager : hasCollectionRole(collection, address)))) && (
-            <EditorPreviewLaunch collectionId={collection.id} itemCount={items.length} reviewing={mode === 'review'} />
-          )}
-      </AvatarPreview>
-    )
+      )}
+      {collection && (mode === 'review' || (mode === 'edit' && hasRole)) && (
+        <EditorPreviewLaunch collectionId={collection.id} itemCount={items.length} reviewing={mode === 'review'} />
+      )}
+    </AvatarPreview>
+  )
 
   if (restored && !session) {
     return (
-      <S.Workspace data-testid="item-editor-page">
-        <S.StatePanel data-testid="sign-in-panel">
+      <div className={styles.workspace} data-testid="item-editor-page">
+        <section className={styles.statePanel} data-testid="sign-in-panel">
           <PersonOutlineIcon />
-          <S.StateTitle>{t('collection_detail_page.sign_in.title')}</S.StateTitle>
+          <h2 className={styles.stateTitle}>{t('collection_detail_page.sign_in.title')}</h2>
           <Button type="button" variant="primary" data-testid="sign-in" onClick={() => signIn()}>
             {t('collection_detail_page.sign_in.action')}
           </Button>
-        </S.StatePanel>
-      </S.Workspace>
+        </section>
+      </div>
     )
   }
 
   if (isNotFound) {
     return (
-      <S.Workspace data-testid="item-editor-page">
-        <S.StatePanel data-testid="collection-not-found">
-          <S.StateTitle>{t('collection_detail_page.not_found.title')}</S.StateTitle>
-          <S.StateText>{t('collection_detail_page.not_found.description')}</S.StateText>
+      <div className={styles.workspace} data-testid="item-editor-page">
+        <section className={styles.statePanel} data-testid="collection-not-found">
+          <h2 className={styles.stateTitle}>{t('collection_detail_page.not_found.title')}</h2>
+          <p className={styles.stateText}>{t('collection_detail_page.not_found.description')}</p>
           <Button type="button" variant="secondary" onClick={() => navigate('/collections')}>
             {t('collection_detail_page.not_found.back')}
           </Button>
-        </S.StatePanel>
-      </S.Workspace>
+        </section>
+      </div>
     )
   }
 
   if (isError) {
     return (
-      <S.Workspace data-testid="item-editor-page">
-        <S.StatePanel data-testid="item-editor-error">
-          <S.StateTitle>{t('collection_detail_page.error.title')}</S.StateTitle>
-          <S.StateText>{t('collection_detail_page.error.description')}</S.StateText>
+      <div className={styles.workspace} data-testid="item-editor-page">
+        <section className={styles.statePanel} data-testid="item-editor-error">
+          <h2 className={styles.stateTitle}>{t('collection_detail_page.error.title')}</h2>
+          <p className={styles.stateText}>{t('collection_detail_page.error.description')}</p>
           <Button
             type="button"
             variant="secondary"
@@ -601,18 +715,18 @@ const ItemEditorPage = () => {
           >
             {t('collection_detail_page.error.retry')}
           </Button>
-        </S.StatePanel>
-      </S.Workspace>
+        </section>
+      </div>
     )
   }
 
   if (isLoading || !address) {
     return (
-      <S.Workspace data-testid="item-editor-page" aria-busy="true">
-        <S.PreviewEmpty data-testid="item-editor-loading">
+      <div className={styles.workspace} data-testid="item-editor-page" aria-busy="true">
+        <div className={styles.previewEmpty} data-testid="item-editor-loading">
           <span className="spinner" aria-hidden />
-        </S.PreviewEmpty>
-      </S.Workspace>
+        </div>
+      </div>
     )
   }
 
@@ -648,51 +762,69 @@ const ItemEditorPage = () => {
         address={address}
         editable={editable}
         showReadOnlyNote={mode !== 'review'}
-        readOnlyReason={isCollectionLocked(collection) ? 'lock' : isLinked ? 'linked' : 'role'}
+        curatorRequest={curatorRequest}
+        readOnlyReason={
+          isCollectionLocked(collection) ? 'lock' : reviewLocked ? 'reviewing' : isLinked ? 'linked' : 'role'
+        }
         canDelete={canDelete}
         canDownload={canManageCollectionItems(collection, address) || isManager || isCurator}
         draft={form.draft}
         dispatch={form.dispatch}
         isDirty={form.isDirty}
-        isSaving={saveItem.isPending}
+        isSaving={isSaving}
+        size={itemSize}
         springBones={springBonesForm}
         linkedContract={isLinked ? linkedContract : undefined}
         onSave={save}
         onSaveFile={saveFileChange}
+        onSaveThumbnail={saveThumbnail}
         onRevert={() => form.reset(selected)}
         onDeleted={() => navigateToItem(null)}
       />
     ) : null
 
-  const collectionUrl = collection ? `/collections/${collection.id}` : ''
-  const leaveEditor = () => {
+  // The detail page is for the collection's roles; a curator with none goes back to the curation list, and anyone
+  // else reached a published collection by link and has nowhere to go back to.
+  const editBack: EditorBack | undefined = collection
+    ? hasRole
+      ? { to: `/collections/${collection.id}`, label: t('item_editor.sidebar.back') }
+      : isCurator
+        ? { to: curationListUrl(), label: t('item_editor.review.back') }
+        : undefined
+    : undefined
+  const mobileBack: EditorBack | undefined =
+    mode === 'review' ? { to: curationListUrl(), label: t('item_editor.review.back') } : editBack
+  const leaveEditor = (to: string) => {
     if (!form.isDirty) return true
-    setPending({ kind: 'away', to: collectionUrl })
+    setPending({ kind: 'away', to })
     return false
   }
   // Phones get no sidebar and no review bar, so this strip is the only way back out of the editor.
   const mobileHeader = collection ? (
-    <S.MobileEditorHeader data-testid="mobile-editor-header">
-      <S.MobileBackLink
-        to={mode === 'review' ? curationListUrl() : collectionUrl}
-        aria-label={t(mode === 'review' ? 'item_editor.review.back' : 'item_editor.sidebar.back')}
-        data-testid="mobile-editor-back"
-        onClick={event => {
-          if (mode === 'edit' && !leaveEditor()) event.preventDefault()
-        }}
-      >
-        <ArrowBackIosNew fontSize="small" />
-      </S.MobileBackLink>
-      <S.MobileCollectionName title={collection.name} data-testid="mobile-editor-collection">
+    <div className={styles.mobileEditorHeader} data-testid="mobile-editor-header">
+      {mobileBack && (
+        <Link
+          className={styles.mobileBackLink}
+          to={mobileBack.to}
+          aria-label={mobileBack.label}
+          data-testid="mobile-editor-back"
+          onClick={event => {
+            if (mode === 'edit' && !leaveEditor(mobileBack.to)) event.preventDefault()
+          }}
+        >
+          <ArrowBackIosNewIcon fontSize="small" />
+        </Link>
+      )}
+      <h1 className={styles.mobileCollectionName} title={collection.name} data-testid="mobile-editor-collection">
         {collection.name}
-      </S.MobileCollectionName>
+      </h1>
       {mode === 'review'
-        ? !mobileCuration.isLoading &&
-          !mobileCuration.isError && (
-            <CurationStatePill state={getCurationState(collection, mobileCuration.data ?? null)} />
+        ? !reviewCuration.isLoading &&
+          !reviewCuration.isError && (
+            <CurationStatePill state={getCurationState(collection, reviewCuration.data ?? null)} />
           )
         : collectionStatus && <CollectionStatusPill collection={collection} status={collectionStatus} />}
-    </S.MobileEditorHeader>
+    </div>
   ) : null
 
   if (isMobile) {
@@ -711,7 +843,7 @@ const ItemEditorPage = () => {
           toggleDressed({ id: item.id, type: item.type, category: item.data.category })
         }}
       >
-        {collection ? preview : <S.PreviewEmpty>{t('item_editor.pick_collection')}</S.PreviewEmpty>}
+        {collection ? preview : <div className={styles.previewEmpty}>{t('item_editor.pick_collection')}</div>}
         {collection && isCustomizerOpen && (
           <AvatarCustomizerDrawer catalog={baseWearables.data} onClose={closeCustomizer} />
         )}
@@ -743,11 +875,8 @@ const ItemEditorPage = () => {
         addItems().catch((error: unknown) => console.error('Add items failed:', error))
       }}
       onSelect={selectItem}
-      onLeave={to => {
-        if (!form.isDirty) return true
-        setPending({ kind: 'away', to })
-        return false
-      }}
+      back={editBack}
+      onLeave={leaveEditor}
       onToggleDressed={item => toggleDressed({ id: item.id, type: item.type, category: item.data.category })}
       onToggleEmotePlay={toggleEmotePlay}
     />
@@ -756,10 +885,10 @@ const ItemEditorPage = () => {
   )
 
   return (
-    <S.Workspace data-testid="item-editor-page" data-mode={mode}>
+    <div className={styles.workspace} data-testid="item-editor-page" data-mode={mode}>
       {reviewBar}
-      <S.Columns>
-        {collection ? sidebar : <S.PickerColumn>{sidebar}</S.PickerColumn>}
+      <div className={styles.columns}>
+        {collection ? sidebar : <div className={styles.pickerColumn}>{sidebar}</div>}
         <PanelGroup
           direction="horizontal"
           autoSaveId="item-editor"
@@ -767,29 +896,28 @@ const ItemEditorPage = () => {
           style={{ flex: 1, minWidth: 0 }}
         >
           <Panel id="editor-center" minSize={CENTER_MIN_PCT} order={2}>
-            <S.CenterPanel data-testid="editor-center">
+            <div className={styles.centerPanel} data-testid="editor-center">
               {collection ? (
                 <>
-                  <S.PreviewArea>
+                  <div className={styles.previewArea}>
                     {preview}
-                    {/* Babylon only: Unity has no live zoom over the bridge (see ZoomControls). */}
-                    {loadCount > 0 && controller && renderer === PreviewRenderer.BABYLON && (
-                      <ZoomControls controller={controller} />
-                    )}
-                  </S.PreviewArea>
+                    {loadCount > 0 && controller && <ZoomControls controller={controller} />}
+                  </div>
                   {isCustomizerOpen && (
                     <AvatarCustomizerDrawer catalog={baseWearables.data} onClose={closeCustomizer} />
                   )}
                 </>
               ) : (
-                <S.PreviewEmpty data-testid="editor-center-empty">{t('item_editor.pick_collection')}</S.PreviewEmpty>
+                <div className={styles.previewEmpty} data-testid="editor-center-empty">
+                  {t('item_editor.pick_collection')}
+                </div>
               )}
-            </S.CenterPanel>
+            </div>
           </Panel>
           {collection && selected && (
             <>
               <PanelResizeHandle>
-                <S.Handle data-testid="resize-handle-right" />
+                <div className={styles.handle} data-testid="resize-handle-right" />
               </PanelResizeHandle>
               <Panel id="editor-properties" defaultSize={RIGHT_DEFAULT_PCT} minSize={RIGHT_MIN_PCT} order={3}>
                 {properties}
@@ -797,7 +925,7 @@ const ItemEditorPage = () => {
             </>
           )}
         </PanelGroup>
-      </S.Columns>
+      </div>
 
       {addItemsFiles && collection && (
         <AddItemsModal collection={collection} address={address} files={addItemsFiles} onClose={closeAddItems} />
@@ -856,7 +984,7 @@ const ItemEditorPage = () => {
           testId="spring-bones-warning"
         />
       )}
-    </S.Workspace>
+    </div>
   )
 }
 

@@ -4,16 +4,6 @@
 import { CurationStatus } from './collections'
 import { type Item } from './items'
 
-export type RemoteItemCuration = {
-  id: string
-  item_id: string
-  status: CurationStatus
-  content_hash: string
-  is_mapping_complete: boolean | null
-  created_at: string
-  updated_at: string
-}
-
 export type ItemCuration = {
   id: string
   itemId: string
@@ -23,18 +13,6 @@ export type ItemCuration = {
   isMappingComplete: boolean | null
   createdAt: number
   updatedAt: number
-}
-
-export function fromRemoteItemCuration(remote: RemoteItemCuration): ItemCuration {
-  return {
-    id: remote.id,
-    itemId: remote.item_id,
-    status: remote.status,
-    contentHash: remote.content_hash,
-    isMappingComplete: remote.is_mapping_complete,
-    createdAt: +new Date(remote.created_at),
-    updatedAt: +new Date(remote.updated_at)
-  }
 }
 
 export enum LinkedItemStatus {

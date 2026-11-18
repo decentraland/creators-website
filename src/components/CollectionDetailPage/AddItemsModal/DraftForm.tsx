@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  ErrorOutline as HintIcon,
-  InfoOutlined as InfoIcon,
-  PlayArrow as PlayIcon,
-  VideocamOutlined as VideoIcon
-} from '@mui/icons-material'
 import { CategorySelect } from '~/components/CategorySelect'
-import { LoopIcon, PlayOnceIcon } from '~/components/Icons'
+import {
+  ExpandMoreIcon,
+  LoopIcon,
+  PlayOnceIcon,
+  ErrorOutlineIcon as HintIcon,
+  InfoOutlinedIcon as InfoIcon,
+  PlayArrowIcon as PlayIcon,
+  VideocamOutlinedIcon as VideoIcon
+} from '~/components/Icons'
 import { RaritySelect } from '~/components/RaritySelect'
 import { InfoTooltip, Tooltip } from '~/components/Tooltip'
 import { VideoDropzone } from '~/components/VideoModal'
 import { useObjectURL } from '~/hooks/useObjectURL'
 import { useTranslation } from '~/intl'
-import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, getSizeError, isValidItemName } from '~/lib/itemFactory'
+import { EmotePlayMode, ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
+import { formatItemSize, isOverSizeLimit, type ItemSize } from '~/lib/itemSize'
 import { toMB } from '~/lib/itemFiles'
 import { BodyShapeType, ItemType, VIDEO_PATH, type Item } from '~/lib/items'
 import { type Mapping } from '~/lib/mappings'
@@ -20,7 +23,8 @@ import { decodeLinkedUrn, type LinkedContract } from '~/lib/thirdParty'
 import { MappingEditor } from '~/components/MappingEditor'
 import { getCategoryOptions, getVariantTargets, type ItemDraft } from './AddItemsModal.state'
 import { BodyShapePicker, DraftPreviewPane } from '~/components/ItemDraftModal'
-import * as S from './AddItemsModal.styles'
+import draftModal from '~/components/ItemDraftModal/ItemDraftModal.module.css'
+import styles from './AddItemsModal.module.css'
 
 type Props = {
   draft: ItemDraft
@@ -34,6 +38,8 @@ type Props = {
   onVideoChange: (video: File) => void
   /** Linked collections: no rarity, and the mapping field when the collection has a linked contract. */
   linked?: { contract: LinkedContract | null; updating?: boolean }
+  /** The item this draft will be saved as, measured the catalyst way; null while unknown. */
+  size?: ItemSize | null
 }
 
 export function DraftForm({
@@ -44,7 +50,8 @@ export function DraftForm({
   onOpenThumbnail,
   onOpenVideo,
   onVideoChange,
-  linked
+  linked,
+  size = null
 }: Props) {
   const { t } = useTranslation()
 
@@ -71,10 +78,8 @@ export function DraftForm({
   )
   const variantTargetShape = draft.bodyShape === BodyShapeType.MALE ? BodyShapeType.FEMALE : BodyShapeType.MALE
   const showItemFields = !draft.isVariant
-  const sizeError = useMemo(
-    () => (draft.type ? getSizeError(draft.type, draft.category ?? undefined, draft.contents) : null),
-    [draft.type, draft.category, draft.contents]
-  )
+  const sizeText = useMemo(() => (size ? formatItemSize(size) : null), [size])
+  const sizeExceeded = !!size && isOverSizeLimit(size)
   const nameInvalid = draft.name.length > 0 && !isValidItemName(draft.name)
   const categories = useMemo(() => getCategoryOptions(draft), [draft])
 
@@ -85,27 +90,27 @@ export function DraftForm({
   useEffect(() => setVideoDuration(null), [videoUrl])
 
   return (
-    <S.Content data-testid="draft-form">
+    <section className={draftModal.content} data-testid="draft-form">
       <DraftPreviewPane draft={draft} thumbnailLocked={draft.isVariant} onOpenThumbnail={onOpenThumbnail} />
 
-      <S.FormPane>
-        <S.FormHeading>
+      <div className={draftModal.formPane}>
+        <h3 className={draftModal.formHeading}>
           {t(linked?.updating ? 'add_items_modal.bulk_edit.form_heading' : 'add_items_modal.form_heading')}
-        </S.FormHeading>
+        </h3>
         {updatedItem?.urn && (
-          <S.FieldHint data-testid="bulk-edit-target" title={updatedItem.urn}>
+          <span className={draftModal.fieldHint} data-testid="bulk-edit-target" title={updatedItem.urn}>
             <InfoIcon />
             {t('add_items_modal.bulk_edit.target', {
               name: updatedItem.name,
               urn: decodeLinkedUrn(updatedItem.urn)?.itemSuffix ?? updatedItem.urn
             })}
-          </S.FieldHint>
+          </span>
         )}
 
         {showItemFields && (
-          <S.Field>
+          <label className={draftModal.field}>
             {t('add_items_modal.item_name')}
-            <S.TextInputBox data-invalid={nameInvalid || undefined}>
+            <div className={styles.textInputBox} data-invalid={nameInvalid || undefined}>
               <input
                 value={draft.name}
                 maxLength={ITEM_NAME_MAX_LENGTH}
@@ -114,24 +119,24 @@ export function DraftForm({
                 data-invalid={nameInvalid || undefined}
                 onChange={event => onUpdate(draft.id, { name: event.target.value })}
               />
-              <S.CharCount data-testid="item-name-count">
+              <span className={styles.charCount} data-testid="item-name-count">
                 {t('add_items_modal.char_count', { count: draft.name.length, max: ITEM_NAME_MAX_LENGTH })}
-              </S.CharCount>
-            </S.TextInputBox>
-            {nameInvalid && <S.ErrorText>{t('add_items_modal.invalid_name')}</S.ErrorText>}
-          </S.Field>
+              </span>
+            </div>
+            {nameInvalid && <p className={draftModal.errorText}>{t('add_items_modal.invalid_name')}</p>}
+          </label>
         )}
 
         {(isWearable || isEmote) && (
-          <S.Field as="div" data-hinted={bodyShapeHint ? true : undefined}>
+          <div className={draftModal.field} data-hinted={bodyShapeHint ? true : undefined}>
             {bodyShapeHint ? (
-              <S.FieldLabel>
+              <span className={draftModal.fieldLabel}>
                 {t('add_items_modal.body_shape')}
-                <S.FieldHint data-testid="body-shape-hint">
+                <span className={draftModal.fieldHint} data-testid="body-shape-hint">
                   <HintIcon />
                   {t(bodyShapeHint)}
-                </S.FieldHint>
-              </S.FieldLabel>
+                </span>
+              </span>
             ) : (
               t('add_items_modal.body_shape')
             )}
@@ -149,15 +154,21 @@ export function DraftForm({
                 })
               }
             />
-          </S.Field>
+          </div>
         )}
 
         {isSingleShape && (
-          <S.Field as="div">
+          <div className={draftModal.field}>
             {t('add_items_modal.variant_question')}
-            <S.Segmented data-joined role="radiogroup" aria-label={t('add_items_modal.variant_question')}>
+            <div
+              className={draftModal.segmented}
+              data-joined
+              role="radiogroup"
+              aria-label={t('add_items_modal.variant_question')}
+            >
               {[true, false].map(answer => (
-                <S.SegmentButton
+                <button
+                  className={draftModal.segmentButton}
                   key={String(answer)}
                   type="button"
                   role="radio"
@@ -167,46 +178,50 @@ export function DraftForm({
                   onClick={() => onUpdate(draft.id, { isVariant: answer, variantTargetId: null })}
                 >
                   {t(answer ? 'add_items_modal.yes' : 'add_items_modal.no')}
-                </S.SegmentButton>
+                </button>
               ))}
-            </S.Segmented>
-          </S.Field>
+            </div>
+          </div>
         )}
 
         {draft.isVariant && variantTargets.length === 0 && (
-          <S.WarningCard data-testid="variant-target-empty">
+          <div className={draftModal.warningCard} data-testid="variant-target-empty">
             <InfoIcon />
             {t('add_items_modal.no_variant_targets', {
               bodyShape: t(`add_items_modal.body_shape_option.${variantTargetShape}`)
             })}
-          </S.WarningCard>
+          </div>
         )}
 
         {draft.isVariant && variantTargets.length > 0 && (
-          <S.Field as="div">
-            <S.Select
-              value={draft.variantTargetId ?? ''}
-              aria-label={t('add_items_modal.select_item')}
-              data-testid="variant-target"
-              onChange={event => onUpdate(draft.id, { variantTargetId: event.target.value || null })}
-            >
-              <option value="">{t('add_items_modal.select_item')}</option>
-              {variantTargets.map(target => (
-                <option key={target.id} value={target.id}>
-                  {t('add_items_modal.variant_target_label', {
-                    name: target.label,
-                    bodyShape: t(`add_items_modal.body_shape_option.${target.bodyShape}`)
-                  })}
-                </option>
-              ))}
-            </S.Select>
-          </S.Field>
+          <div className={draftModal.field}>
+            <div className={styles.selectField}>
+              <select
+                className={styles.select}
+                value={draft.variantTargetId ?? ''}
+                aria-label={t('add_items_modal.select_item')}
+                data-testid="variant-target"
+                onChange={event => onUpdate(draft.id, { variantTargetId: event.target.value || null })}
+              >
+                <option value="">{t('add_items_modal.select_item')}</option>
+                {variantTargets.map(target => (
+                  <option key={target.id} value={target.id}>
+                    {t('add_items_modal.variant_target_label', {
+                      name: target.label,
+                      bodyShape: t(`add_items_modal.body_shape_option.${target.bodyShape}`)
+                    })}
+                  </option>
+                ))}
+              </select>
+              <ExpandMoreIcon className={styles.selectChevron} />
+            </div>
+          </div>
         )}
 
         {isEmote && showItemFields && (
-          <S.Field as="div">
+          <div className={draftModal.field}>
             {t('add_items_modal.play_mode')}
-            <S.Segmented role="radiogroup" aria-label={t('add_items_modal.play_mode')}>
+            <div className={draftModal.segmented} role="radiogroup" aria-label={t('add_items_modal.play_mode')}>
               {[EmotePlayMode.LOOP, EmotePlayMode.SIMPLE].map(mode => (
                 <Tooltip
                   key={mode}
@@ -214,7 +229,8 @@ export function DraftForm({
                   asChild
                   testId={`play-mode-${mode}-tooltip`}
                 >
-                  <S.SegmentButton
+                  <button
+                    className={draftModal.segmentButton}
                     type="button"
                     role="radio"
                     aria-checked={draft.playMode === mode}
@@ -224,16 +240,16 @@ export function DraftForm({
                   >
                     {mode === EmotePlayMode.LOOP ? <LoopIcon /> : <PlayOnceIcon />}
                     {t(`add_items_modal.play_mode_option.${mode}`)}
-                  </S.SegmentButton>
+                  </button>
                 </Tooltip>
               ))}
-            </S.Segmented>
-          </S.Field>
+            </div>
+          </div>
         )}
 
         {showItemFields && (
-          <S.FieldRow>
-            <S.Field>
+          <div className={styles.fieldRow}>
+            <label className={draftModal.field}>
               {t('add_items_modal.category')}
               <CategorySelect
                 value={draft.category}
@@ -242,55 +258,56 @@ export function DraftForm({
                 onChange={category => onUpdate(draft.id, { category })}
               />
               {isWearable && draft.suggestedCategory !== null && draft.category === draft.suggestedCategory && (
-                <S.FieldHint data-testid="suggested-category">
+                <span className={draftModal.fieldHint} data-testid="suggested-category">
                   <HintIcon />
                   {t('add_items_modal.suggested_category', {
                     category: t(`collection_detail_page.category.${draft.suggestedCategory}`)
                   })}
-                </S.FieldHint>
+                </span>
               )}
-            </S.Field>
+            </label>
             {!linked && (
-              <S.Field>
-                <S.FieldLabelRow>
+              <label className={draftModal.field}>
+                <span className={styles.fieldLabelRow}>
                   {t('add_items_modal.rarity')}
                   <InfoTooltip content={t('add_items_modal.rarity_tooltip')} testId="rarity-tooltip" />
-                </S.FieldLabelRow>
+                </span>
                 <RaritySelect
                   value={draft.rarity}
                   testId="item-rarity"
                   onChange={rarity => onUpdate(draft.id, { rarity })}
                 />
-              </S.Field>
+              </label>
             )}
-          </S.FieldRow>
+          </div>
         )}
 
         {showItemFields && linked?.contract && (
-          <S.Field as="div" data-testid="draft-mapping-field">
-            <S.FieldLabel>
+          <div className={draftModal.field} data-testid="draft-mapping-field">
+            <span className={draftModal.fieldLabel}>
               {t('mapping_editor.label')}
-              <S.FieldHint>{t('add_items_modal.mapping_hint')}</S.FieldHint>
-            </S.FieldLabel>
+              <span className={draftModal.fieldHint}>{t('add_items_modal.mapping_hint')}</span>
+            </span>
             <MappingEditor
               key={draft.id}
               value={draft.mapping}
               testId="draft-mapping"
               onChange={(mapping: Mapping | null) => onUpdate(draft.id, { mapping })}
             />
-          </S.Field>
+          </div>
         )}
 
         {isSmart && (
-          <S.Field as="div" data-testid="draft-video-field">
-            <S.FieldLabel>
+          <div className={draftModal.field} data-testid="draft-video-field">
+            <span className={draftModal.fieldLabel}>
               {t('add_items_modal.video.label')}
-              <S.FieldHint>{t('add_items_modal.video.field_hint')}</S.FieldHint>
-            </S.FieldLabel>
+              <span className={draftModal.fieldHint}>{t('add_items_modal.video.field_hint')}</span>
+            </span>
             <VideoDropzone compact testId="draft-video" onPick={onVideoChange}>
               {video && videoUrl && (
                 <>
-                  <S.VideoPoster
+                  <button
+                    className={styles.videoPoster}
                     type="button"
                     aria-label={t('add_items_modal.video.edit')}
                     data-testid="draft-video-preview"
@@ -307,34 +324,40 @@ export function DraftForm({
                         setVideoDuration(Number.isFinite(duration) ? duration : null)
                       }}
                     />
-                    <S.VideoPlay>
+                    <span className={styles.videoPlay}>
                       <PlayIcon />
-                    </S.VideoPlay>
-                    <S.VideoPosterOverlay data-video-overlay>
+                    </span>
+                    <span className={styles.videoPosterOverlay} data-video-overlay>
                       <VideoIcon />
-                    </S.VideoPosterOverlay>
-                  </S.VideoPoster>
-                  <S.VideoInfo>
-                    <S.VideoName>{video instanceof File ? video.name : VIDEO_PATH}</S.VideoName>
-                    <S.VideoMeta data-testid="draft-video-meta">
+                    </span>
+                  </button>
+                  <span className={styles.videoInfo}>
+                    <span className={styles.videoName}>{video instanceof File ? video.name : VIDEO_PATH}</span>
+                    <span className={styles.videoMeta} data-testid="draft-video-meta">
                       {videoDuration !== null && (
                         <span>{t('add_items_modal.video.duration', { seconds: Math.round(videoDuration) })}</span>
                       )}
                       <span>{t('add_items_modal.video.size', { size: toMB(video.size) })}</span>
-                    </S.VideoMeta>
-                  </S.VideoInfo>
+                    </span>
+                  </span>
                 </>
               )}
             </VideoDropzone>
-          </S.Field>
+          </div>
         )}
 
-        {sizeError !== null && (
-          <S.ErrorText data-testid="size-error">
-            {t('add_items_modal.file_error.size_exceeded', { size: sizeError })}
-          </S.ErrorText>
+        {sizeText && (
+          <p className={draftModal.sizeLine} data-testid="draft-size" data-exceeded={sizeExceeded || undefined}>
+            {t('item_size.label')}
+            <strong>{t('item_size.value', sizeText)}</strong>
+          </p>
         )}
-      </S.FormPane>
-    </S.Content>
+        {sizeExceeded && sizeText && (
+          <p className={draftModal.errorText} role="alert" data-testid="size-error">
+            {t('add_items_modal.file_error.size_exceeded', sizeText)}
+          </p>
+        )}
+      </div>
+    </section>
   )
 }

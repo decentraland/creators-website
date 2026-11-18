@@ -3,8 +3,8 @@ import { MultiSelect } from '~/components/MultiSelect'
 import { InfoTooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
 import { getHideableBodyPartCategories, getHideableWearableCategories } from '~/lib/wearableCategories'
-import * as EditorS from '../ItemEditorPage.styles'
-import * as S from './HidesEditor.styles'
+import styles from './HidesEditor.module.css'
+import editor from '../ItemEditorPage.module.css'
 
 type Props = {
   contents: Record<string, unknown>
@@ -41,29 +41,33 @@ export function HidesEditor({ contents, category, hides, disabled = false, onCha
   // Read-only (curators, locked items) lists every hidden slot as a pill: a disabled select truncates long lists.
   function renderReadOnly(label: (value: string) => string, values: string[], fieldTestId: string) {
     if (values.length === 0)
-      return <S.Empty data-testid={`${fieldTestId}-empty`}>{t('item_editor.overrides.none_hidden')}</S.Empty>
+      return (
+        <span className={styles.empty} data-testid={`${fieldTestId}-empty`}>
+          {t('item_editor.overrides.none_hidden')}
+        </span>
+      )
     return (
-      <EditorS.Chips data-testid={fieldTestId}>
+      <div className={editor.chips} data-testid={fieldTestId}>
         {values.map(value => (
-          <EditorS.TagChip key={value} data-readonly data-testid={`${fieldTestId}-pill`}>
+          <span className={editor.tagChip} key={value} data-readonly data-testid={`${fieldTestId}-pill`}>
             {label(value)}
-          </EditorS.TagChip>
+          </span>
         ))}
-      </EditorS.Chips>
+      </div>
     )
   }
 
   return (
     <>
-      <S.Group>
-        <S.Label>
+      <div className={styles.group}>
+        <div className={styles.label}>
           {t('item_editor.overrides.body_parts')}
           <InfoTooltip content={t('item_editor.overrides.body_parts_hint')} testId={`${testId}-body-parts-hint`} />
-        </S.Label>
+        </div>
         {disabled && bodyPartOptions.length > 0 ? (
           renderReadOnly(value => t(`item_editor.body_part.${value}`), hiddenBodyParts, `${testId}-body-parts`)
         ) : bodyPartOptions.length === 0 ? (
-          <S.Empty>{t('item_editor.overrides.none_available')}</S.Empty>
+          <span className={styles.empty}>{t('item_editor.overrides.none_available')}</span>
         ) : (
           <MultiSelect
             values={hiddenBodyParts}
@@ -76,12 +80,12 @@ export function HidesEditor({ contents, category, hides, disabled = false, onCha
             onChange={setBodyParts}
           />
         )}
-      </S.Group>
-      <S.Group>
-        <S.Label>
+      </div>
+      <div className={styles.group}>
+        <div className={styles.label}>
           {t('item_editor.overrides.categories')}
           <InfoTooltip content={t('item_editor.overrides.categories_hint')} testId={`${testId}-categories-hint`} />
-        </S.Label>
+        </div>
         {disabled && categoryOptions.length > 0 ? (
           renderReadOnly(
             value => t(`collection_detail_page.category.${value}`),
@@ -89,7 +93,7 @@ export function HidesEditor({ contents, category, hides, disabled = false, onCha
             `${testId}-categories`
           )
         ) : categoryOptions.length === 0 ? (
-          <S.Empty>{t('item_editor.overrides.none_available')}</S.Empty>
+          <span className={styles.empty}>{t('item_editor.overrides.none_available')}</span>
         ) : (
           <MultiSelect
             values={hiddenCategories}
@@ -102,7 +106,7 @@ export function HidesEditor({ contents, category, hides, disabled = false, onCha
             onChange={setCategories}
           />
         )}
-      </S.Group>
+      </div>
     </>
   )
 }

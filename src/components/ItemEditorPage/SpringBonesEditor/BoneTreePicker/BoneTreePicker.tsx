@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDropDown as ChevronIcon, ChevronRight as CaretIcon, Close as ClearIcon } from '@mui/icons-material'
+import {
+  ArrowDropDownIcon as ChevronIcon,
+  ChevronRightIcon as CaretIcon,
+  CloseIcon as ClearIcon
+} from '~/components/Icons'
 import { useListbox } from '~/components/Select/useListbox'
 import { type BoneNode, type BoneTreeNode } from '~/lib/springBones'
-import * as S from './BoneTreePicker.styles'
+import styles from './BoneTreePicker.module.css'
 
 /** The picker needs a value for "no bone"; the schema's own value for it is `undefined`. */
 export const NO_BONE = '__none__'
@@ -87,8 +91,9 @@ export function BoneTreePicker({
   }
 
   return (
-    <S.Wrap ref={wrapRef} onKeyDown={onKeyDown}>
-      <S.Trigger
+    <div className={styles.wrap} ref={wrapRef} onKeyDown={onKeyDown}>
+      <button
+        className={styles.trigger}
         type="button"
         role="combobox"
         aria-haspopup="tree"
@@ -102,20 +107,22 @@ export function BoneTreePicker({
       >
         <span title={value}>{value ?? noneLabel}</span>
         {!value && <ChevronIcon />}
-      </S.Trigger>
+      </button>
       {value && !disabled && (
-        <S.Clear
+        <button
+          className={styles.clear}
           type="button"
           aria-label={clearLabel}
           data-testid={`${testId}-clear`}
           onClick={() => onChange(undefined)}
         >
           <ClearIcon />
-        </S.Clear>
+        </button>
       )}
       {open &&
         createPortal(
-          <S.Tree
+          <ul
+            className={styles.tree}
             ref={listRef}
             role="tree"
             id={listId}
@@ -123,7 +130,8 @@ export function BoneTreePicker({
             style={listStyle}
             onKeyDown={onKeyDown}
           >
-            <S.Row
+            <li
+              className={styles.row}
               role="treeitem"
               aria-selected={!value}
               data-active={active === NO_BONE || undefined}
@@ -132,11 +140,12 @@ export function BoneTreePicker({
               onMouseEnter={() => setActive(NO_BONE)}
               onClick={() => pick(NO_BONE)}
             >
-              <S.Caret data-hidden />
+              <span className={styles.caret} data-hidden />
               <span>{noneLabel}</span>
-            </S.Row>
+            </li>
             {rows.map(row => (
-              <S.Row
+              <li
+                className={styles.row}
                 key={row.bone.nodeId}
                 role="treeitem"
                 aria-selected={row.bone.name === value}
@@ -149,7 +158,8 @@ export function BoneTreePicker({
                 onMouseEnter={() => row.selectable && setActive(row.bone.name)}
                 onClick={() => onRowClick(row)}
               >
-                <S.Caret
+                <span
+                  className={styles.caret}
                   data-hidden={!row.hasChildren || undefined}
                   data-open={row.expanded || undefined}
                   data-testid={`${testId}-toggle-${row.bone.name}`}
@@ -159,13 +169,13 @@ export function BoneTreePicker({
                   }}
                 >
                   <CaretIcon />
-                </S.Caret>
+                </span>
                 <span title={row.bone.name}>{row.bone.name}</span>
-              </S.Row>
+              </li>
             ))}
-          </S.Tree>,
+          </ul>,
           document.body
         )}
-    </S.Wrap>
+    </div>
   )
 }

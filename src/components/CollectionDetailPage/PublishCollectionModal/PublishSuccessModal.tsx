@@ -1,9 +1,9 @@
-import { Check as CheckIcon } from '@mui/icons-material'
+import { CheckIcon } from '~/components/Icons'
 import { Modal } from '~/components/Modal'
 import { Button } from '~/components/Button'
 import { useTranslation } from '~/intl'
 import successArt from '~/assets/publish-success.png'
-import * as S from './PublishSuccessModal.styles'
+import styles from './PublishSuccessModal.module.css'
 
 type Props = {
   onDone: () => void
@@ -19,14 +19,16 @@ export function PublishSuccessModal({ onDone }: Props) {
       hideTitle
       testId="publish-success-modal"
     >
-      <S.Wrap>
-        <S.Art src={successArt} alt="" />
-        <S.Text data-testid="publish-success-description">{t('publish_collection_modal.success.description')}</S.Text>
+      <div className={styles.wrap}>
+        <img className={styles.art} src={successArt} alt="" />
+        <p className={styles.text} data-testid="publish-success-description">
+          {t('publish_collection_modal.success.description')}
+        </p>
         <Button type="button" data-testid="publish-success-done" onClick={onDone}>
           {t('publish_collection_modal.success.done')}
           <CheckIcon fontSize="small" />
         </Button>
-      </S.Wrap>
+      </div>
     </Modal>
   )
 }

@@ -1,7 +1,7 @@
 // Primary (mint) listings of a published collection, from marketplace-server. `/v1/items` says which
 // items are on sale and their wei price (on-chain store price, or the trade amount); the shop catalog
 // says which of those are credits listings, whose trade amount is USD wei rather than MANA wei.
-import { ethers } from 'ethers'
+import { maxUint256 } from 'viem'
 import { config } from '~/config'
 
 /**
@@ -24,7 +24,7 @@ type ItemRow = {
 // A collection has at most a few dozen items; the catalog caps `first` at 1000.
 const FIRST = '1000'
 // The legacy builder's "no price set" marker on a store-minted item.
-const NO_PRICE = ethers.constants.MaxUint256.toString()
+const NO_PRICE = maxUint256.toString()
 const WEI = /^\d+$/
 
 async function getJson<T>(path: string, query: Record<string, string>): Promise<T> {

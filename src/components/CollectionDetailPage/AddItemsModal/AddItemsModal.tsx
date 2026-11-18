@@ -7,6 +7,7 @@ import { allCollectionItemsKey, useAllCollectionItems } from '~/hooks/useCollect
 import { itemCurationsKey, linkedItemsKey } from '~/hooks/useLinkedCollection'
 import { useThumbnailEditor } from '~/hooks/useThumbnailEditor'
 import { useBeforeUnloadGuard } from '~/hooks/useBeforeUnloadGuard'
+import { useItemSizeDeps, useMeasuredBytes } from '~/hooks/useItemSize'
 import { installBackGuard } from '~/lib/backGuard'
 import { ItemFileError, VIDEO_PATH } from '~/lib/itemFiles'
 import { type EmotePlayMode, type ItemDraftPayload } from '~/lib/itemFactory'
@@ -23,11 +24,14 @@ import { useNotifications } from '~/lib/notifications'
 import { type SpringBoneParamsByName } from '~/lib/springBones'
 import { errorCode, track } from '~/lib/analytics'
 import { captureError } from '~/lib/monitoring'
-import { executeUpload, findDuplicateUrns, planUpload, type UploadDraft } from '~/lib/uploadItems'
+import { type ItemSize } from '~/lib/itemSize'
+import { executeUpload, findDuplicateUrns, planDraftUpload, planUpload, type UploadDraft } from '~/lib/uploadItems'
 import {
   addItemsReducer,
   createDraft,
   createInitialState,
+  draftSizeInputs,
+  getDraftSizeLimit,
   isDraftComplete,
   isValidationStale,
   type ItemDraft
@@ -40,7 +44,8 @@ import { DraftProcessor } from '~/components/ItemDraftModal'
 import { VideoModal } from '~/components/VideoModal'
 import { LeaveConfirmModal } from './LeaveConfirmModal'
 import { UploadErrorModal } from './UploadErrorModal'
-import * as S from './AddItemsModal.styles'
+import draftModal from '~/components/ItemDraftModal/ItemDraftModal.module.css'
+import styles from './AddItemsModal.module.css'
 
 /** Values decided before the modal opened (the Blender live preview's tuning), applied to every draft. */
 export type AddItemsPrefill = {
@@ -181,9 +186,11 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
     () => pickPreviewDraft(drafts, selected?.id ?? null, processingIdRef.current),
     [drafts, selected?.id]
   )
+  const previewDraftId = previewDraft?.id ?? null
   useEffect(() => {
-    processingIdRef.current = previewDraft?.id ?? null
-  }, [previewDraft?.id])
+    // Kept once the queue drains, so the next file finishes the type the iframe is mounted for.
+    if (previewDraftId) processingIdRef.current = previewDraftId
+  }, [previewDraftId])
 
   // Image wearables are padded per category, so a category change re-pads our auto thumbnail.
   const repaddingIdsRef = useRef(new Set<string>())
@@ -227,9 +234,31 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
       .finally(() => validatingIdsRef.current.delete(stale.id))
   }, [drafts])
 
+  // The item the selected draft will be saved as, built exactly as the upload builds it (thumbnail quantized, rarity
+  // image rendered, a variant merged into its target) and measured the catalyst way (lib/itemSize).
+  const sizeDeps = useItemSizeDeps()
+  const sizeInputs = useMemo(
+    () => [selected?.id ?? null, collectionItems, ...draftSizeInputs(drafts)],
+    [selected?.id, collectionItems, drafts]
+  )
+  const measuredBytes = useMeasuredBytes(
+    selected?.status === 'ready' && selected.type
+      ? async () => (await planDraftUpload(selected.id, drafts.map(toPayload), collectionItems))?.built ?? null
+      : null,
+    sizeInputs,
+    'add_items'
+  )
+  const selectedSize = useMemo<ItemSize | null>(
+    () =>
+      selected && measuredBytes !== null
+        ? { bytes: measuredBytes, limit: getDraftSizeLimit(selected, drafts, collectionItems) }
+        : null,
+    [selected, measuredBytes, drafts, collectionItems]
+  )
+
   const isSelectedComplete = useMemo(
-    () => !!selected && isDraftComplete(selected, drafts, collectionItems, draftRules),
-    [selected, drafts, collectionItems, draftRules]
+    () => !!selected && isDraftComplete(selected, drafts, collectionItems, draftRules, selectedSize),
+    [selected, drafts, collectionItems, draftRules, selectedSize]
   )
   const othersChecked = useMemo(
     () => !!selected && drafts.every(draft => draft.id === selected.id || draft.checked),
@@ -306,7 +335,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
     }
     try {
       const operations = await planUpload(payloads, collectionItems, { replaceByUrn: updateOnly })
-      const result = await executeUpload(address, operations)
+      const result = await executeUpload(address, operations, sizeDeps)
 
       // One event per upload rather than per item: the legacy builder's per-item `Save item` on creation
       // reads here as `item_count` (see docs/TRACKING_SPEC.md).
@@ -445,7 +474,8 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
         testId="add-items-modal"
       >
         {/* `inert` isn't in React 18's typings, so it goes through the spread. */}
-        <S.Layout
+        <div
+          className={draftModal.layout}
           data-flush={!isSingle || undefined}
           data-uploading={isUploading || undefined}
           aria-busy={isUploading || undefined}
@@ -460,7 +490,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
               onRemove={id => dispatch({ type: 'draftRemoved', id })}
             />
           )}
-          <S.Main>
+          <div className={draftModal.main}>
             {selected && selected.status === 'ready' ? (
               <DraftForm
                 draft={selected}
@@ -477,23 +507,28 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
                 }
                 onOpenVideo={() => setVideoOpen(true)}
                 onVideoChange={handleVideoChange}
+                size={selectedSize}
                 linked={isLinked ? { contract: linkedContract, updating: updateOnly } : undefined}
               />
             ) : (
-              <S.ProcessingPane data-testid="draft-processing">
+              <div
+                className={draftModal.processingPane}
+                data-testid="draft-processing"
+                data-error={selected?.status === 'failed' ? (selected.errorKey ?? 'invalid_model_file') : undefined}
+              >
                 {selected?.status === 'failed' ? (
                   t(`add_items_modal.file_error.${selected.errorKey ?? 'invalid_model_file'}`, selected.errorParams)
                 ) : (
                   <>
-                    <S.ProcessingSpinner data-testid="draft-processing-spinner" aria-hidden />
+                    <span className={draftModal.processingSpinner} data-testid="draft-processing-spinner" aria-hidden />
                     {t('add_items_modal.processing')}
                   </>
                 )}
-              </S.ProcessingPane>
+              </div>
             )}
             {itemsFailed && (
-              <S.ItemsError role="alert" data-testid="add-items-items-error">
-                <S.ErrorText>{t('add_items_modal.items_error')}</S.ErrorText>
+              <div className={styles.itemsError} role="alert" data-testid="add-items-items-error">
+                <p className={draftModal.errorText}>{t('add_items_modal.items_error')}</p>
                 <Button
                   type="button"
                   size="sm"
@@ -503,9 +538,9 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
                 >
                   {t('add_items_modal.error.try_again')}
                 </Button>
-              </S.ItemsError>
+              </div>
             )}
-            <S.Footer>
+            <div className={draftModal.footer}>
               <Button
                 type="button"
                 variant="secondary"
@@ -515,7 +550,7 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
               >
                 {t('add_items_modal.cancel')}
               </Button>
-              <S.FooterRight>
+              <div className={draftModal.footerRight}>
                 {!isSingle && (
                   <Button
                     type="button"
@@ -552,19 +587,26 @@ export function AddItemsModal({ collection, address, files, prefill, onClose, up
                     {t('add_items_modal.save_next')}
                   </Button>
                 )}
-              </S.FooterRight>
-            </S.Footer>
-          </S.Main>
-        </S.Layout>
+              </div>
+            </div>
+          </div>
+        </div>
+        {previewDraft && (
+          <DraftProcessor
+            draft={previewDraft}
+            flow="add_items"
+            batchSize={drafts.length}
+            onResult={(id, result) => dispatch({ type: 'draftPreviewed', id, result })}
+            onError={(id, reason) =>
+              dispatch({
+                type: 'draftFailed',
+                id,
+                errorKey: reason === 'timeout' ? 'preview_timeout' : 'invalid_model_file'
+              })
+            }
+          />
+        )}
       </Modal>
-
-      {previewDraft && (
-        <DraftProcessor
-          draft={previewDraft}
-          onResult={(id, patch) => dispatch({ type: 'draftAnalyzed', id, patch })}
-          onError={id => dispatch({ type: 'draftFailed', id, errorKey: 'invalid_model_file' })}
-        />
-      )}
 
       {thumbnailEditor.modal}
 

@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import {
-  PreviewEmote,
-  PreviewEmoteEventType,
-  PreviewUnityMode,
-  type IPreviewController,
-  type PreviewRenderer
-} from '@dcl/schemas'
+import { PreviewEmote, PreviewEmoteEventType, PreviewRenderer, PreviewUnityMode } from '@dcl/schemas'
 import { Env } from '@dcl/ui-env'
-import { WearablePreview } from 'decentraland-ui2'
+import {
+  WearablePreview,
+  createWearablePreviewController,
+  type WearablePreviewController
+} from '~/components/WearablePreview'
 import { config } from '~/config'
+import { usePreviewRenderer } from '~/hooks/usePreviewRenderer'
 import { type AvatarAttributes } from '~/lib/avatar'
 import {
   PREVIEW_WHEEL_START,
@@ -20,7 +19,7 @@ import {
 } from '~/lib/preview'
 import { createPreviewBridge, type PreviewBridge } from '~/lib/previewBridge'
 import { useAvatarPreview } from '~/store/avatarPreview'
-import * as S from './AvatarPreview.styles'
+import styles from './AvatarPreview.module.css'
 
 export type { AvatarPreviewSource }
 
@@ -30,37 +29,54 @@ type Props = {
   avatar: AvatarAttributes
   /** Ignored while an emote item is the subject: the item owns the animation then. */
   emote?: PreviewEmote
-  /** Renderer request; the caller decides through `lib/pickRenderer`. */
-  unity?: boolean
   onLoad?: (renderer?: PreviewRenderer) => void
   onError?: (error: Error) => void
-  onController?: (controller: IPreviewController) => void
+  onController?: (controller: WearablePreviewController) => void
   /** Overlay slot along the bottom (playback, customizer, badges). */
   children?: ReactNode
   testId?: string
 }
 
 /**
- * The shared avatar preview. Mounts ui2's WearablePreview once with a frozen snapshot of the
- * URL-bound options and pushes every later change through `lib/previewBridge`, so avatar and item
- * changes never reload the iframe.
+ * The shared avatar preview. Picks the renderer once (`usePreviewRenderer`), then mounts the
+ * WearablePreview once with a frozen snapshot of the URL-bound options and pushes every later change
+ * through `lib/previewBridge`, so avatar and item changes never reload the iframe.
  */
-export function AvatarPreview({
+export function AvatarPreview(props: Props) {
+  const renderer = usePreviewRenderer()
+  const testId = props.testId ?? 'avatar-preview'
+  if (renderer === undefined) {
+    return (
+      <div className={styles.wrap} data-testid={testId} data-loading>
+        <div className={styles.loader} aria-busy="true" data-testid={`${testId}-loading`}>
+          <span className="spinner" aria-hidden />
+        </div>
+      </div>
+    )
+  }
+  return <MountedPreview {...props} unity={renderer === PreviewRenderer.UNITY} />
+}
+
+function MountedPreview({
   id,
   source,
   avatar,
   emote = PreviewEmote.IDLE,
-  unity = false,
+  unity,
   onLoad,
   onError,
   onController,
   children,
   testId = 'avatar-preview'
-}: Props) {
+}: Props & { unity: boolean }) {
   const [snapshot] = useState(() => ({ ...avatar, emote, unity, emoteSubject: isEmoteSubject(source) }))
   const [isLoading, setLoading] = useState(true)
   const bridgeRef = useRef<PreviewBridge | null>(null)
-  const options = useMemo(() => buildPreviewOptions(source, avatar, emote), [source, avatar, emote])
+  const showSceneBoundaries = useAvatarPreview(state => state.showSceneBoundaries)
+  const options = useMemo(
+    () => buildPreviewOptions(source, avatar, emote, showSceneBoundaries),
+    [source, avatar, emote, showSceneBoundaries]
+  )
   const optionsRef = useRef(options)
   optionsRef.current = options
   const onLoadRef = useRef(onLoad)
@@ -70,7 +86,7 @@ export function AvatarPreview({
   const onControllerRef = useRef(onController)
   onControllerRef.current = onController
 
-  // The iframe exists once ui2 has committed; the bridge and the controller attach to it by id.
+  // The iframe exists once the preview has committed; the bridge and the controller attach to it by id.
   useEffect(() => {
     const iframe = document.getElementById(id)
     if (!(iframe instanceof HTMLIFrameElement)) return
@@ -80,7 +96,7 @@ export function AvatarPreview({
     bridge.update(optionsRef.current)
 
     // Created at mount, not in onLoad: Babylon fires PLAY right after LOAD and a late subscriber misses it.
-    const controller = WearablePreview.createController(id)
+    const controller = createWearablePreviewController(id)
     const { setPlaying, endEmote } = useAvatarPreview.getState()
     const onPlay = () => setPlaying(true)
     const onPause = () => setPlaying(false)
@@ -105,7 +121,7 @@ export function AvatarPreview({
   }, [options])
 
   return (
-    <S.Wrap data-testid={testId} data-loading={isLoading || undefined}>
+    <div className={styles.wrap} data-testid={testId} data-loading={isLoading || undefined}>
       <WearablePreview
         id={id}
         bodyShape={snapshot.bodyShape}
@@ -134,15 +150,19 @@ export function AvatarPreview({
         }}
       />
       {isLoading && (
-        <S.Loader aria-busy="true" data-testid={`${testId}-loading`}>
+        <div className={styles.loader} aria-busy="true" data-testid={`${testId}-loading`}>
           <span className="spinner" aria-hidden />
-        </S.Loader>
+        </div>
       )}
       {children && (
-        <S.Overlay data-testid={`${testId}-overlay`} data-emote-subject={isEmoteSubject(source) || undefined}>
+        <div
+          className={styles.overlay}
+          data-testid={`${testId}-overlay`}
+          data-emote-subject={isEmoteSubject(source) || undefined}
+        >
           {children}
-        </S.Overlay>
+        </div>
       )}
-    </S.Wrap>
+    </div>
   )
 }

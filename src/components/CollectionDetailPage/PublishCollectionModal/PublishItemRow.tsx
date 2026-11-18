@@ -1,23 +1,29 @@
 import { useState } from 'react'
-import { Check as CheckIcon, Close as CloseIcon, Edit as EditIcon } from '@mui/icons-material'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { ITEM_NAME_MAX_LENGTH, isValidItemName } from '~/lib/itemFactory'
 import { getItemBodyShapeType, type Item } from '~/lib/items'
 import { DEFAULT_RARITY, isRarity, type RarityName } from '~/lib/rarities'
-import { TrashIcon } from '~/components/Icons'
+import { TrashIcon, CheckIcon, CloseIcon, EditIcon } from '~/components/Icons'
 import { BodyShapeIcon, CategoryIcon } from '~/components/ItemIcons'
 import { RarityPill } from '~/components/RarityPill'
 import { RaritySelect } from '~/components/RaritySelect'
-import * as Shared from './PublishCollectionModal.styles'
-import * as S from './PublishItemRow.styles'
+import { cx } from '~/lib/cx'
+import styles from './PublishItemRow.module.css'
+import publishModal from './PublishCollectionModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Props = {
   item: Item
   isEditing: boolean
   isSaving: boolean
   saveError: boolean
+  /** Replaces the generic save error, for a failure the creator can act on (an item over its size limit). */
+  saveErrorMessage?: string
+  /** False when no row can act, so the table drops the actions column. */
+  withActions: boolean
+  canEdit: boolean
   canDelete: boolean
   /** Other rows lock while one is being edited. */
   locked: boolean
@@ -36,6 +42,9 @@ export function PublishItemRow({
   isEditing,
   isSaving,
   saveError,
+  saveErrorMessage,
+  withActions,
+  canEdit,
   canDelete,
   locked,
   pendingThumbnail,
@@ -66,10 +75,17 @@ export function PublishItemRow({
   }
 
   return (
-    <S.Row data-testid="publish-item-row" data-item-id={item.id} data-editing={isEditing || undefined}>
-      <S.NameCell>
+    <div
+      className={cx(styles.columns, styles.row)}
+      data-testid="publish-item-row"
+      data-item-id={item.id}
+      data-editing={isEditing || undefined}
+      data-no-actions={!withActions || undefined}
+    >
+      <div className={styles.nameCell}>
         {isEditing ? (
-          <S.ThumbButton
+          <button
+            className={styles.thumbButton}
             type="button"
             title={t('publish_collection_modal.items_step.edit_thumbnail')}
             aria-label={t('publish_collection_modal.items_step.edit_thumbnail')}
@@ -77,20 +93,21 @@ export function PublishItemRow({
             data-testid="publish-item-edit-thumbnail"
             onClick={onEditThumbnail}
           >
-            <Shared.Thumb>
+            <span className={publishModal.thumb}>
               <ItemThumbnail src={thumbnailUrl} rarity={item.rarity} testId="publish-item" />
-            </Shared.Thumb>
-            <S.ThumbBadge aria-hidden>
+            </span>
+            <span className={styles.thumbBadge} aria-hidden>
               <EditIcon />
-            </S.ThumbBadge>
-          </S.ThumbButton>
+            </span>
+          </button>
         ) : (
-          <Shared.Thumb>
+          <span className={publishModal.thumb}>
             <ItemThumbnail src={thumbnailUrl} rarity={item.rarity} testId="publish-item" />
-          </Shared.Thumb>
+          </span>
         )}
         {isEditing ? (
-          <S.NameInput
+          <input
+            className={styles.nameInput}
             value={name}
             maxLength={ITEM_NAME_MAX_LENGTH}
             disabled={isSaving}
@@ -108,11 +125,11 @@ export function PublishItemRow({
             }}
           />
         ) : (
-          <S.Name title={item.name} data-testid="publish-item-name">
+          <span className={styles.name} title={item.name} data-testid="publish-item-name">
             {item.name}
-          </S.Name>
+          </span>
         )}
-      </S.NameCell>
+      </div>
       <span data-testid="publish-item-body-type">
         {bodyShape ? <BodyShapeIcon bodyShape={bodyShape} withLabel /> : '—'}
       </span>
@@ -121,70 +138,80 @@ export function PublishItemRow({
       </span>
       <span data-testid="publish-item-rarity">
         {isEditing ? (
-          <S.SelectCell>
+          <div className={styles.selectCell}>
             <RaritySelect value={rarity} onChange={setRarity} />
-          </S.SelectCell>
+          </div>
         ) : (
           item.rarity && <RarityPill rarity={item.rarity} />
         )}
       </span>
-      <S.Actions>
-        {isEditing ? (
-          <>
-            <S.IconButton
-              type="button"
-              data-variant="cancel"
-              title={t('publish_collection_modal.items_step.cancel_edit')}
-              aria-label={t('publish_collection_modal.items_step.cancel_edit')}
-              disabled={isSaving}
-              data-testid="publish-item-cancel"
-              onClick={onCancelEdit}
-            >
-              <CloseIcon />
-            </S.IconButton>
-            <S.IconButton
-              type="button"
-              data-variant="save"
-              title={t('publish_collection_modal.items_step.save')}
-              aria-label={t('publish_collection_modal.items_step.save')}
-              disabled={!nameValid || isSaving}
-              aria-busy={isSaving || undefined}
-              data-testid="publish-item-save"
-              onClick={save}
-            >
-              {isSaving ? <Shared.Spinner aria-hidden /> : <CheckIcon />}
-            </S.IconButton>
-          </>
-        ) : (
-          <>
-            <S.IconButton
-              type="button"
-              title={t('publish_collection_modal.items_step.edit')}
-              aria-label={t('publish_collection_modal.items_step.edit')}
-              disabled={locked}
-              data-testid="publish-item-edit"
-              onClick={startEditing}
-            >
-              <EditIcon />
-            </S.IconButton>
-            {canDelete && (
-              <S.IconButton
+      {withActions && (
+        <div className={styles.actions} data-testid="publish-item-actions">
+          {isEditing ? (
+            <>
+              <button
+                className={styles.iconButton}
                 type="button"
-                title={t('publish_collection_modal.items_step.delete')}
-                aria-label={t('publish_collection_modal.items_step.delete')}
-                disabled={locked}
-                data-testid="publish-item-delete"
-                onClick={onDelete}
+                data-variant="cancel"
+                title={t('publish_collection_modal.items_step.cancel_edit')}
+                aria-label={t('publish_collection_modal.items_step.cancel_edit')}
+                disabled={isSaving}
+                data-testid="publish-item-cancel"
+                onClick={onCancelEdit}
               >
-                <TrashIcon />
-              </S.IconButton>
-            )}
-          </>
-        )}
-      </S.Actions>
-      {isEditing && saveError && (
-        <S.RowError data-testid="publish-item-error">{t('publish_collection_modal.items_step.save_error')}</S.RowError>
+                <CloseIcon />
+              </button>
+              <button
+                className={styles.iconButton}
+                type="button"
+                data-variant="save"
+                title={t('publish_collection_modal.items_step.save')}
+                aria-label={t('publish_collection_modal.items_step.save')}
+                disabled={!nameValid || isSaving}
+                aria-busy={isSaving || undefined}
+                data-testid="publish-item-save"
+                onClick={save}
+              >
+                {isSaving ? <span className={shared.spinner} aria-hidden /> : <CheckIcon />}
+              </button>
+            </>
+          ) : (
+            <>
+              {canEdit && (
+                <button
+                  className={styles.iconButton}
+                  type="button"
+                  title={t('publish_collection_modal.items_step.edit')}
+                  aria-label={t('publish_collection_modal.items_step.edit')}
+                  disabled={locked}
+                  data-testid="publish-item-edit"
+                  onClick={startEditing}
+                >
+                  <EditIcon />
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  className={styles.iconButton}
+                  type="button"
+                  title={t('publish_collection_modal.items_step.delete')}
+                  aria-label={t('publish_collection_modal.items_step.delete')}
+                  disabled={locked}
+                  data-testid="publish-item-delete"
+                  onClick={onDelete}
+                >
+                  <TrashIcon />
+                </button>
+              )}
+            </>
+          )}
+        </div>
       )}
-    </S.Row>
+      {isEditing && saveError && (
+        <p className={styles.rowError} data-testid="publish-item-error">
+          {saveErrorMessage ?? t('publish_collection_modal.items_step.save_error')}
+        </p>
+      )}
+    </div>
   )
 }

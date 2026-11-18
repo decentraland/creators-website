@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
-import { defineConfig, loadEnv, type PluginOption } from 'vite'
+import { defineConfig, loadEnv, type Plugin, type PluginOption } from 'vite'
 
 const readJson = (path: string): unknown =>
   JSON.parse(readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8'))
@@ -22,6 +22,39 @@ const sentryUpload = Boolean(process.env.SENTRY_AUTH_TOKEN)
  */
 const sentryRelease = `creators-website@${pkg.version}`
 
+const UI2_PREVIEW = /decentraland-ui2[\\/]dist[\\/]components[\\/]WearablePreview[\\/]WearablePreview\.js(\?.*)?$/
+const UI2_ORIGIN_CHECK = /if \(origin !== baseUrl \|\| !event\.data\?\.type\)\s*return;/
+
+/**
+ * decentraland-ui2's WearablePreview acts on READY and LOAD from any preview iframe on the page. A READY from another
+ * one makes it post its model before its own iframe is listening, and it never sends it again. This makes its handler
+ * drop messages that aren't from its own iframe; it goes away once ui2 checks the sender itself.
+ */
+function ui2PreviewSenderCheck(mustApply: boolean): Plugin {
+  let applied = false
+  return {
+    // The dev pre-bundle cache keys on this name, not on the rewrite: after changing it, run `vite --force`.
+    name: 'ui2-preview-sender-check',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!UI2_PREVIEW.test(id)) return null
+      if (!UI2_ORIGIN_CHECK.test(code)) {
+        this.error('decentraland-ui2 changed its preview message handler: update or drop ui2PreviewSenderCheck')
+      }
+      applied = true
+      const patched = code.replace(
+        UI2_ORIGIN_CHECK,
+        // On the same line, so the module's source map still points at the right lines.
+        check => `${check} if (event.source !== iframeRef.current?.contentWindow) return;`
+      )
+      return { code: patched, map: null }
+    },
+    buildEnd(error) {
+      if (mustApply && !error && !applied) this.error('ui2PreviewSenderCheck never saw decentraland-ui2')
+    }
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
   const envVariables = loadEnv(mode, process.cwd())
@@ -35,6 +68,7 @@ export default defineConfig(({ command, mode }) => {
     worker: { format: 'es' },
     plugins: [
       react(),
+      { ...ui2PreviewSenderCheck(true), apply: 'build' },
       ...(sentryUpload
         ? [
             // The plugin is declared `=> any`; pin it to vite's own plugin type so the spread stays typed.
@@ -66,7 +100,18 @@ export default defineConfig(({ command, mode }) => {
     ...(command === 'build' ? { base: envVariables.VITE_BASE_URL?.replace(/([^/])$/, '$1/') } : undefined),
     // 'hidden': the maps are written for the upload but no `sourceMappingURL` comment is emitted, so
     // the shipped bundles don't point the CDN at files that were deleted right after they went up.
-    build: { sourcemap: sentryUpload ? 'hidden' : false },
+    build: {
+      sourcemap: sentryUpload ? 'hidden' : false,
+      // Without it every icon ships wherever the `~/components/Icons` barrel lands (the entry chunk), not only
+      // in the chunks that render it.
+      rolldownOptions: {
+        treeshake: {
+          moduleSideEffects: [{ test: /[\\/]src[\\/]components[\\/]Icons[\\/].*\.tsx$/, sideEffects: false }]
+        }
+      }
+    },
+    // The dev server pre-bundles dependencies apart from the plugins above.
+    optimizeDeps: { rolldownOptions: { plugins: [ui2PreviewSenderCheck(false)] } },
     server: {
       // Proxy the auth app so sign-in stays same-origin on localhost (shared identity storage).
       // Vercel previews get the same via the rewrite in vercel.json — keep the two in step. Real

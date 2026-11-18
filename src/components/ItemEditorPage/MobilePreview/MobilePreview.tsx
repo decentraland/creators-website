@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { type BodyShape } from '@dcl/schemas'
-import { Close as CloseIcon, DesktopWindowsOutlined as DesktopIcon } from '@mui/icons-material'
+import { CloseIcon, DesktopWindowsOutlinedIcon as DesktopIcon } from '~/components/Icons'
 import { ItemThumbnail } from '~/components/ItemThumbnail'
 import { useTranslation } from '~/intl'
 import { getContentsStorageUrl } from '~/lib/builder'
 import { hasRepresentationFor } from '~/lib/itemEditor'
 import { type Item } from '~/lib/items'
-import * as S from '../ItemEditorPage.styles'
+import styles from '../ItemEditorPage.module.css'
 
 type Props = {
   items: Item[]
@@ -31,11 +31,11 @@ export function MobilePreview({ items, selectedId, dressedIds, bodyShape, onTap,
   const { t } = useTranslation()
   const [hintDismissed, setHintDismissed] = useState(false)
   return (
-    <S.MobileWorkspace data-testid="item-editor-mobile">
+    <div className={styles.mobileWorkspace} data-testid="item-editor-mobile">
       {header}
-      <S.MobilePreviewArea>{children}</S.MobilePreviewArea>
+      <div className={styles.mobilePreviewArea}>{children}</div>
       {!hintDismissed && !readOnly && (
-        <S.MobileHint data-testid="mobile-hint">
+        <div className={styles.mobileHint} data-testid="mobile-hint">
           <DesktopIcon fontSize="small" />
           <span>{t('item_editor.mobile_hint')}</span>
           <button
@@ -46,15 +46,16 @@ export function MobilePreview({ items, selectedId, dressedIds, bodyShape, onTap,
           >
             <CloseIcon fontSize="small" />
           </button>
-        </S.MobileHint>
+        </div>
       )}
-      <S.Strip role="group" aria-label={t('item_editor.sidebar.items')} data-testid="mobile-strip">
+      <div className={styles.strip} role="group" aria-label={t('item_editor.sidebar.items')} data-testid="mobile-strip">
         {items.map(item => {
           const available = hasRepresentationFor(item, bodyShape)
           const dressed = dressedIds.includes(item.id)
           const thumbnail = item.contents[item.thumbnail]
           return (
-            <S.StripItem
+            <button
+              className={styles.stripItem}
               key={item.id}
               type="button"
               aria-pressed={dressed}
@@ -70,10 +71,10 @@ export function MobilePreview({ items, selectedId, dressedIds, bodyShape, onTap,
               onClick={() => onTap(item)}
             >
               <ItemThumbnail src={thumbnail ? getContentsStorageUrl(thumbnail) : null} rarity={item.rarity} />
-            </S.StripItem>
+            </button>
           )
         })}
-      </S.Strip>
-    </S.MobileWorkspace>
+      </div>
+    </div>
   )
 }

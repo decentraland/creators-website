@@ -38,7 +38,7 @@ On top of the prop, `initAnalytics` registers a Segment **source middleware** th
 
 Where the legacy builder has an event for the same user intent, **its name and its prop names are reused verbatim** (`itemId`, `collectionId`, `txHash`, `usedCredits`, `creditsAmount`, and the SCREAMING_SNAKE props of the item-editor events) even where the surrounding style is snake_case — the whole point is that a warehouse query written for the old builder also counts the new one. Props with no legacy counterpart are snake_case.
 
-Failure events use `errorCode(error)`: the domain error's own `reason` (`locked`, `insufficient_credits`, `not_draft`, …), `rejected` for a dismissed wallet prompt, else `unknown`. **Never a raw error message** — it can carry ids or wallet copy, and free text does not aggregate.
+Failure events use `errorCode(error)`: the domain error's own `reason` (`locked`, `insufficient_credits`, `not_draft`, …), `rejected` for a dismissed wallet prompt, `wallet` for a wallet on another account or network than the session's (`WrongAccountError` / `WrongChainError`, wrapped or not), else `unknown`. **Never a raw error message** — it can carry ids or wallet copy, and free text does not aggregate.
 
 ### Identity
 
@@ -52,14 +52,6 @@ Failure events use `errorCode(error)`: the domain error's own `reason` (`locked`
 `identify(address, { ethAddress, chainId, provider_type })` fires with `Connect Wallet`. `ethAddress` and `chainId` are the legacy builder's traits, kept so an audience built on them also covers this app.
 
 Switching accounts in an injected wallet reloads the page, and `analytics.reset()` runs first so the two accounts don't end up sharing one anonymous visitor.
-
-### Pre-launch gate
-
-| event | when | props |
-| --- | --- | --- |
-| `Prelaunch gate` | the `creators-prelaunch` gate answered while armed: once per wallet per page load (a sign-out after a counted visit is not a new visitor and is not sent) | `outcome` (`open` = wallet on the allowlist, `hidden` = overview only). `address` / `is_signed_in` come from the common props |
-
-Not sent when the flag is off: after launch every visitor is `open` and the event would only be noise. A curtained visitor is redirected to the overview from any other route, so their only page view is the overview's.
 
 ### Page views
 
@@ -75,14 +67,15 @@ A Segment `page` call per pathname change, named from a fixed map in `lib/pageVi
 | `Delete collection error` |  | `collectionId`, `error` |
 | `Preview In World` | a **Preview in World** launch settles (desktop only) | `collectionId`, `itemCount`, `launched` (the desktop explorer opened; `false` = sent to the download page), `trigger` (`detail` = the collection page's ⋯ menu, `editor` = item editor preview bar; not `source`, which the app sets on every event) |
 | `Publish details confirmed` | step 1 of the publish wizard was confirmed and left (after a rename saved) | `collectionId`, `nameChanged`, `emailSource` (`profile` = kept the profile email, `edited` = changed it, `typed` = no profile email) |
-| `Publish collection` | the publish transaction was sent and the collection locked | `collectionId`, `txHash`, `isFiat` (always `false` — no fiat publish here), `usedCredits`, `creditsAmount`, `item_count` |
-| `Publish collection error` |  | `collectionId`, `isFiat`, `usedCredits`, `error` |
+| `Publish collection` | the publish transaction was sent and the collection locked | `collectionId`, `txHash`, `isFiat` (always `false` — no fiat publish here), `usedCredits`, `creditsAmount`, `item_count`, `isRetry` (the collection was still locked by an earlier publish) |
+| `Publish collection error` |  | `collectionId`, `isFiat`, `usedCredits`, `isRetry`, `error` |
+| `Publish collection reverted` | the publish transaction was mined but reverted (and no earlier attempt had deployed the collection); nothing was charged and the creator can publish again | `collectionId`, `txHash`, `usedCredits` |
 | `Open buy credits` | the credits top-up opened from the publish payment step because the balance falls short | `collectionId`, `shortfall` |
 | `Start credits checkout` | the creator leaves for Stripe's hosted checkout (the wizard state is saved to resume on return) | `collectionId`, `orderId`, `packId`, `quantity`, `credits`, `usd`, `shortfall`, `resumeSaved` |
 | `Credits checkout canceled` | back from Stripe with the checkout cancelled; the order is cancelled server-side | `collectionId`, `orderId` |
 | `Credits checkout settled` | back from Stripe, once the order's outcome is known (nothing while confirming) | `orderId`, `status` (a settled order status: `credited` / `failed` / `abandoned`; `initiated` when nobody paid by the poll's deadline; `pending` when the order was paid but still processing at the deadline, or the read failed), `credits` (granted, else `null`) |
 | `Filter linked collections` | the Linked chip on My collections is selected | `count` |
-| `View linked collection` | a linked (third-party) collection's detail loads | `collectionId`, `item_count`, `network`, `is_reader` (the signer is not a manager: the public read-only view) |
+| `View linked collection` | a linked (third-party) collection's detail loads | `collectionId`, `item_count`, `network` |
 | `Copy linked contract address` | the linked contract address is copied on the detail | `collectionId`, `network` |
 | `Create TP Collection` | a linked collection is created (legacy name and props) | `collectionId`, `thirdPartyId`, `linkedContractAddress`, `linkedContractNetwork`, `collectionName` |
 | `Change TP Collection URN` / `Change TP Item URN` | a linked collection's or item's URN suffix is saved (legacy names) | `oldURN`, `newURN` |
@@ -104,6 +97,7 @@ Linked funnel: Linked chip → `Create TP Collection` → `Add items` → `Publi
 | --- | --- | --- |
 | `Add items` | an upload that creates items finished in the add-items modal. One event per upload, **not** per item: the legacy builder's per-item `Save item` on creation reads here as `item_count` | `collectionId`, `item_count`, `failed_count`, `error` (only when some failed) |
 | `Edit TP Items` | an update-only upload finished (every draft edits an existing linked item; legacy name, so bulk edits line up with the old builder's) | `collectionId`, `item_count`, `failed_count` |
+| `Item preview processed` | the hidden preview finished a file's metrics and auto thumbnail, or gave up on it (add items and the change-file modal). A `timeout` also goes to Sentry (`step: 'preview_timeout'`, with `flow`, `renderer` and `itemType`) | `flow` (`add_items` / `item_file_change`), `renderer` (`unity` / `babylon`), `item_type`, `outcome` (`ok` / `timeout` / `error`), `duration_ms` (from the file's turn to the result, not the wait in the queue), `attempts` (iframes used: `2` after a remount), `batch_size` |
 | `Add items error` | the upload threw before producing a result, or was refused because drafts share a linked URN (`error: duplicate_urn`) | `collectionId`, `item_count`, `error` |
 | `Save item` | a single item was saved from the editor | `itemId` |
 | `Save item error` |  | `itemId`, `error` |
@@ -125,13 +119,15 @@ Legacy prop names, so the events line up with the old editor's.
 | `Play Emote` | an emote is picked in the playback bar — one event per wearable on the avatar, as in the legacy editor. Where legacy emits nothing at all on a bare avatar, this app emits one event with null wearable props | `EMOTE_PLAYED_BASE` (a default animation rather than a collection emote), `EMOTE_PLAYED_ITEM_ID`, `EMOTE_PLAYED_NAME`, `PREVIEWED_WEARABLE_ITEM_ID`, `PREVIEWED_WEARABLE_NAME` |
 | `Change item file` | the change-file modal saved a new model for the item (after the `Save item` of that PUT) | `itemId`, `bodyShape` (`both` / `male` / `female`), `mode` (`replace_all` / `replace_shape` / `add_representation`), `fileKind` (`glb` / `gltf` / `zip` / `png`), `thumbnailRegenerated` |
 | `Change item file error` | the picked file was rejected or the import threw | `itemId`, `error` (the `ItemFileError` key, or `errorCode` for a throw) |
+| `Toggle scene boundaries` | the scene boundaries cylinder is shown or hidden over the preview | `visible` (the new state), `trigger` (`editor` / `live_preview`) |
+| `Item metrics repaired` | once per item per editor mount, after any write-back has settled, when the editor replaces a wearable's stored metrics that have no geometry with ones counted from its model. A failure to fetch the model goes to Sentry (`flow: 'item_metrics_repair'`), and a failed background save through the app's mutation handler (`flow: 'mutation'`); that save sends neither `Save item` nor `Save item error` | `itemId`, `saved` (the corrected metrics were written back at once: editor of an unpublished, unlocked collection with no unsaved edits; `false` when that save failed) |
 
 ### Item validation
 
 | event | when | props |
 | --- | --- | --- |
 | `Publish Validation Started` | the publish modal opens (not when resuming from a credits purchase) or the push-changes modal opens | `collectionId`, `flow` (`publish` \| `push_changes`), `itemCount` |
-| `Publish Validation Result` | the pre-step's checks finished and the modal moved on | `collectionId`, `flow`, `errors`, `warnings`, `itemsWithIssues`, `blocking` (flag on and errors), `durationMs` (from opening) |
+| `Publish Validation Result` | the pre-step's checks finished and the modal moved on | `collectionId`, `flow`, `errors`, `warnings` (an item whose size could not be measured adds one), `itemsWithIssues`, `oversizedItems` (over their size limit), `blocking` (errors that block: flag on, or an item over its size limit), `durationMs` (from opening) |
 | `Publish Validation Resolved` | the creator left the issues view | `collectionId`, `flow`, `action` (`continue` \| `back`; the × counts as `back`), `errors`, `warnings` |
 | `Item Validation Details Opened` | an item's validation details modal opens | `itemId`, `status`, `trigger` (`row` \| `editor`) |
 | `Item Validation Rerun` | a re-run finished | `itemId`, `trigger` (`details` \| `publish` \| `push_changes`; not `source`, which the app sets on every event), `previousStatus`, `newStatus` |
@@ -166,7 +162,7 @@ The legacy builder put an item on sale by setting a price and beneficiary on-cha
 | `Mint items` | items were sent to their recipients | `collectionId`, `item_count`, `copies`, `recipient_count` |
 | `Mint items error` |  | `collectionId`, `error`, `item_count`, `copies`, `recipient_count` — the batch size is what tells a cap-sized send apart from a small one when failures move |
 
-Sentry flow `send_items` (with `collectionId` and the batch size) for every send failure that is not a wallet rejection: a revert, a relayer refusal or an RPC error. Wallet rejections are events only.
+Sentry flow `send_items` (with `collectionId` and the batch size) for every send failure that is not a wallet rejection or a wallet on the wrong account or network: a revert, a relayer refusal or an RPC error. Those two are events only.
 
 ### Collection discounts
 
@@ -191,8 +187,16 @@ Committee actions keep the legacy names (the on-chain disable was "Reject collec
 | `Curation filter changed` | a curation page filter or the sort changed | `filter` (`review_type` / `status` / `assignee` / `sort` / `tag`), `value` (the picked values comma-joined, `all` when cleared) |
 | `Assign curator` / `Unassign curator` | the assignee was saved | `collectionId`, `assignee` |
 | `Assign curator error` |  | `collectionId`, `error` |
-| `Reject curation` | a review request was rejected | `collectionId`, `first_review` |
+| `Reject curation` | a review request was rejected | `collectionId`, `first_review`, `reasons` (the reason codes, empty without the reasons form) |
 | `Reject curation error` |  | `collectionId`, `error` |
+| `Request validation` | the creator asked for another automated review (**Review again**) and builder-server accepted it | `collectionId`, `attempts_left` (after this one) |
+| `Request validation error` | the request failed, 429 and 409 included (they are answers, not Sentry errors) | `collectionId`, `error` |
+| `Appeal curation` | the creator asked for a curator review of a rejected collection and builder-server accepted it | `collectionId`, `has_note` |
+| `Appeal curation error` |  | `collectionId`, `error` |
+| `Review Modal Opened` | one of the review flow's modals opened, by the review itself or by the creator | `collectionId`, `stage` (the review stage, `null` without a timeline), `modal` (`reviewing` \| `issues` \| `request` \| `sent` \| `limit` \| `additional` \| `activity`) |
+| `Post review comment` | a creator or a curator wrote on the collection's review timeline and builder-server stored it | `collectionId`, `role` (`creator` \| `curator`), `has_item`, `length` |
+| `Post review comment error` |  | `collectionId`, `role`, `error` |
+| `Open activity` | the collection's Activity timeline modal opened | `collectionId` |
 | `Reject collection` | a collection was disabled on chain | `collectionId`, `txHash` |
 | `Reject collection error` |  | `collectionId`, `error` |
 | `Approval flow started` / `Approval flow completed` | the approval dialog opened / finished | `collectionId`, `mode` (`approve` / `enable` / `deploy_missing`) |
@@ -205,14 +209,14 @@ Committee actions keep the legacy names (the on-chain disable was "Reject collec
 | `Approval error details copied` | the curator copied a failure's raw details for support | `collectionId` |
 | `Approve collection` | the collection was approved (or enabled) on chain | `collectionId`, `txHash` |
 | `Approve collection error` |  | `collectionId`, `error` |
-| `Approve curation` | the pending review request was marked approved | `collectionId` |
-| `Push curation` | a creator sent a collection back to the committee: an approved one's changes, or a rejected first review again | `collectionId`, `first_review` |
+| `Approve curation` | the pending review request was marked approved | `collectionId`, `has_note` |
+| `Push curation` | a creator sent a collection back to the committee: an approved one's changes, or a rejected first review again | `collectionId`, `first_review`, `has_note` |
 | `Push curation error` |  | `collectionId`, `error` |
 | `Review Validation Result` | the review bar's checks of a collection's pending items first settle, once per collection opened (cached results included) | `collectionId`, `itemCount`, `errors`, `warnings`, `itemsWithIssues`, `durationMs` (from opening) |
 | `Review Validation Opened` | the curator opened the collection's validation results | `collectionId`, `status` (`warnings` \| `errors`) |
 | `Review Preview In World` | a **Preview in World** launch from the editor in review mode settles (desktop only) | `collectionId`, `itemCount`, `launched` (the desktop explorer opened; `false` = sent to the download page) |
 
-Sentry flows: `curation_assign`, `curation_reject`, `curation_disable`, `curation_push`, `curation_approve` (with `step`). Wallet rejections are events only.
+Sentry flows: `curation_assign`, `curation_reject`, `curation_comment`, `curation_disable`, `curation_push`, `curation_approve` (with `step`). Wallet rejections and a wallet on the wrong account or network are events only.
 
 Linked collections (curator side):
 
@@ -317,9 +321,9 @@ The preview renderer decision is not an error: it is set as the `preview_rendere
 
 Item validation reports a crashed rule-book worker once per page load with `flow: 'validation_worker'` (runs fall back inline), a model or thumbnail check that could not run with `flow: 'model_validation'` / `'thumbnail_validation'` (shown as a non-blocking warning), and a check that crashed inside the rule book with `flow: 'validation'`.
 
-Linked collections report with `flow: 'linked_publish'` from `step: 'sign_cheque'` (a cheque signature that fails for a reason other than a wallet rejection) and from the payment on (`wait_tx`, `delete_virtual`, `publish`, `push`: the creator may have paid, so a failure there needs someone to look, a payment still unconfirmed after the wait included; `txHash` in extra). The `linked_publish` flow itself skips a rejected wallet prompt and a reverted transaction (nothing was charged), but a `pending_review` or `insufficient_slots` refusal at the `publish` step still reaches it, and the mutation reporter (below) still sends every non-wallet-rejection failure of the publish, reverted transactions and early-step refusals included, as `flow: 'mutation'`. The curator side reports with `flow: 'linked_curation_approve'` (`step`: `prepare` / `root` / `deploy`), `'linked_curation_reject'` and `'linked_curation_review'` (enable / disable a third party). A wallet rejection is never reported; a non-NFT contract or an invalid mapping is refused in the form before any request and is a Segment event only.
+Linked collections report with `flow: 'linked_publish'` from `step: 'sign_cheque'` (a cheque signature that fails for a reason other than a wallet rejection) and from the payment on (`wait_tx`, `delete_virtual`, `publish`, `push`: the creator may have paid, so a failure there needs someone to look, a payment still unconfirmed after the wait included; `txHash` in extra). The `linked_publish` flow itself skips a rejected wallet prompt and a reverted transaction (nothing was charged), but a `pending_review` or `insufficient_slots` refusal at the `publish` step still reaches it, and the mutation reporter (below) still sends every failure of the publish that is not a wallet rejection or a wallet on the wrong account or network, reverted transactions and early-step refusals included, as `flow: 'mutation'`. The curator side reports with `flow: 'linked_curation_approve'` (`step`: `prepare` / `root` / `deploy`), `'linked_curation_reject'` and `'linked_curation_review'` (enable / disable a third party). A wallet rejection or a wallet on the wrong account or network is never reported; a non-NFT contract or an invalid mapping is refused in the form before any request and is a Segment event only.
 
-Every `flow` tag the app sends, with what it covers. A wallet rejection is never reported under any of them. The feature flows skip the refusals named in their section, but the mutation reporter (`flow: 'mutation'`) filters wallet rejections only, so a refusal the creator can fix (a locked collection on save, a linked publish's `pending_review` / `insufficient_slots`, a discount's `pending` / `unconfirmed`, a reverted transaction) still reaches Sentry under `mutation` whenever it fails a react-query mutation:
+Every `flow` tag the app sends, with what it covers. A wallet rejection or a wallet on the wrong account or network is never reported under any of them. The feature flows skip the refusals named in their section, but the mutation reporter (`flow: 'mutation'`) filters only those two, so a refusal the creator can fix (a locked collection on save, a linked publish's `pending_review` / `insufficient_slots`, a discount's `pending` / `unconfirmed`, a reverted transaction) still reaches Sentry under `mutation` whenever it fails a react-query mutation:
 
 | flow | reported from |
 | --- | --- |
@@ -329,7 +333,8 @@ Every `flow` tag the app sends, with what it covers. A wallet rejection is never
 | `add_items` | the add-items modal: a model that could not be analysed (`step: 'validate'`) or re-validated after a category change (`step: 'revalidate'`) |
 | `save-item` / `item_save` | saving an item: the mutation's reporter (`save-item`) and the editor's save path (`item_save`) |
 | `item_file_change` | the change-file modal's import or save |
-| `send_items` | a send that failed for a reason other than a wallet rejection (`collectionId`, the batch size) |
+| `item_metrics_repair` | the item editor's metrics repair: fetching the model to count, or the background save of the counted metrics |
+| `send_items` | a send that failed for a reason other than a wallet rejection or a wallet on the wrong account or network (`collectionId`, the batch size) |
 | `transfer_ownership` | the detached owner sync after a transfer gave up |
 | `create_collection_discount` / `end_collection_discount` | signing or storing a collection discount, ending one early |
 | `network-selector` | reading or switching the wallet's chain (`step: 'read-chain'` / `'switch-chain'`) |
@@ -346,7 +351,7 @@ The Blender live preview reports with `flow: 'live_preview'`: a bridge that answ
 
 The overview's two third-party feeds (`hot-scenes`, `latest-blog-posts`) retry once and set `meta: { reportOnlyHttpErrors: true }`: anything but an error response (offline, CORS, ad blocker, timeout or abort) is the visitor's network and is not reported. A non-2xx response throws `HttpError` and is reported once by the query cache with `http_status` (a tag). Their secondary requests (blog categories, covers) degrade silently.
 
-react-query swallows query and mutation failures (they become `error` state, never an unhandled rejection), so `src/lib/queryClient.ts` reports them from the cache level: every failed query as `flow: 'query'` with its `query_key`, every failed mutation as `flow: 'mutation'` with its `mutation_key` (when the hook sets one). A wallet rejection (EIP-1193 4001 / ACTION_REJECTED / "user rejected") is a choice, not a failure, and is never reported. Render crashes are reported by `ErrorBoundary` as `flow: 'render'`; everything uncaught is picked up by Sentry's global handlers.
+react-query swallows query and mutation failures (they become `error` state, never an unhandled rejection), so `src/lib/queryClient.ts` reports them from the cache level: every failed query as `flow: 'query'` with its `query_key`, every failed mutation as `flow: 'mutation'` with its `mutation_key` (when the hook sets one). A wallet rejection (EIP-1193 4001 / ACTION_REJECTED / "user rejected") is a choice, not a failure, and a wallet on another account or network is the creator's to fix: neither is ever reported, here or by any flow's own `captureError`. Render crashes are reported by `ErrorBoundary` as `flow: 'render'`; everything uncaught is picked up by Sentry's global handlers.
 
 ## 6. Not tracked (deliberately)
 

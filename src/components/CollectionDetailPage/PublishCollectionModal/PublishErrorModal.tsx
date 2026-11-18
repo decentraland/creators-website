@@ -23,13 +23,16 @@ const UNRETRIABLE_REASONS: PublishFailureReason[] = ['locked', 'unsynced']
 /** "We couldn't publish your collection" — TRY AGAIN returns to the wizard with everything kept. */
 export function PublishErrorModal({ reason, onCancel, onRetry }: Props) {
   const { t } = useTranslation()
-  const descriptionKey = DESCRIBED_REASONS.includes(reason) ? reason : 'generic'
+  const description =
+    reason === 'wallet'
+      ? 'wallet_error.wrong_account'
+      : `publish_collection_modal.error.description_${DESCRIBED_REASONS.includes(reason) ? reason : 'generic'}`
   const canRetry = !UNRETRIABLE_REASONS.includes(reason)
 
   return (
     <ConfirmModal
       title={t('publish_collection_modal.error.title')}
-      description={t(`publish_collection_modal.error.description_${descriptionKey}`)}
+      description={t(description)}
       art={{ src: errorArt }}
       onClose={onCancel}
       cancel={{ label: t('publish_collection_modal.error.cancel'), onClick: onCancel, testId: 'publish-error-cancel' }}

@@ -17,6 +17,13 @@ vi.mock('~/lib/itemFiles', async importOriginal => ({
   loadItemFile: (...args: unknown[]) => loadItemFile(...args)
 }))
 vi.mock('~/lib/models', () => ({ analyzeModel: (...args: unknown[]) => analyzeModel(...args) }))
+// Stored files by content hash: the size shown counts everything the item keeps.
+const stored = vi.hoisted<{ sizes: Record<string, number> }>(() => ({ sizes: {} }))
+vi.mock('~/lib/builder', async importOriginal => ({
+  ...(await importOriginal<typeof import('~/lib/builder')>()),
+  fetchContentSize: async (hash: string) => stored.sizes[hash] ?? 1_000,
+  fetchContent: async () => new Blob(['stored'])
+}))
 vi.mock('~/hooks/useThumbnailValidation', () => ({ useThumbnailValidation: () => ({ data: undefined }) }))
 // The preview iframe is what fills metrics and the auto thumbnail; here it answers at once (or when the
 // test releases it) and records which draft it was handed.
@@ -74,7 +81,7 @@ const maleOnly: Item = {
     category: 'hat',
     representations: [{ bodyShapes: [BodyShape.MALE], mainFile: 'male/hat.glb', contents: ['male/hat.glb'] }]
   },
-  contents: { 'male/hat.glb': 'bafyOld', 'thumbnail.png': 'bafyThumb' },
+  contents: { 'male/hat.glb': 'bafyOld', 'thumbnail.png': 'bafyThumb', 'image.png': 'bafyImage' },
   createdAt: 1,
   updatedAt: 1
 }
@@ -88,7 +95,12 @@ const unisex: Item = {
       { bodyShapes: [BodyShape.FEMALE], mainFile: 'female/hat.glb', contents: ['female/hat.glb'] }
     ]
   },
-  contents: { 'male/hat.glb': 'bafyMale', 'female/hat.glb': 'bafyFemale', 'thumbnail.png': 'bafyThumb' }
+  contents: {
+    'male/hat.glb': 'bafyMale',
+    'female/hat.glb': 'bafyFemale',
+    'thumbnail.png': 'bafyThumb',
+    'image.png': 'bafyImage'
+  }
 }
 
 function renderModal(item: Item, lockedBodyShape?: BodyShapeType.MALE | BodyShapeType.FEMALE) {
@@ -106,6 +118,7 @@ async function loadFile() {
 }
 
 beforeEach(() => {
+  stored.sizes = {}
   processed.runs.length = 0
   processed.pending.length = 0
   processed.defer = false
@@ -151,6 +164,36 @@ describe('ChangeFileModal', () => {
     await userEvent.click(screen.getByTestId('change-file-discard'))
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(onApply).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the size the item will have, with the files it keeps', async () => {
+    renderModal(maleOnly)
+    await loadFile()
+    // The new model and render, plus the rarity image rendered from it (no canvas here: the render's own bytes).
+    expect(await screen.findByTestId('change-file-size')).toHaveTextContent('0.00 / 3.00 MB')
+    expect(screen.getByTestId('change-file-size')).not.toHaveAttribute('data-exceeded')
+    expect(screen.queryByTestId('change-file-size-error')).not.toBeInTheDocument()
+  })
+
+  it('refuses one body shape whose new file fits alone but not with the other shape, thumbnail and rarity image', async () => {
+    // Bull&Bear Merch: each shape's model is ~1.5 MB, the whole item 3.09 MB.
+    stored.sizes = { bafyFemale: 1_537_136, bafyThumb: 201_089, bafyImage: 87_467 }
+    loadItemFile.mockResolvedValue({
+      contents: { 'new.glb': new Blob([new Uint8Array(1_417_980)]) },
+      model: 'new.glb',
+      bodyShape: null
+    })
+    const { onApply } = renderModal(unisex)
+    await loadFile()
+    await userEvent.click(screen.getByTestId('body-shape-male'))
+    await userEvent.click(screen.getByTestId('change-file-keep-thumbnail'))
+    await waitFor(() => expect(screen.getByTestId('change-file-size')).toHaveTextContent('3.09 / 3.00 MB'))
+    expect(screen.getByTestId('change-file-size')).toHaveAttribute('data-exceeded', 'true')
+    expect(screen.getByTestId('change-file-size-error')).toHaveTextContent(
+      'This item is 3.09 MB, over the 3.00 MB limit (thumbnail included). Reduce its textures or geometry.'
+    )
+    expect(screen.getByTestId('change-file-save')).toBeDisabled()
+    expect(onApply).not.toHaveBeenCalled()
   })
 
   it('moves the body shape with the arrow keys', async () => {
