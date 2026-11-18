@@ -3,7 +3,7 @@ import { Tooltip } from '~/components/Tooltip'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { useAvatarPreview } from '~/store/avatarPreview'
-import * as S from './SceneBoundariesToggle.styles'
+import styles from './SceneBoundariesToggle.module.css'
 
 type Props = {
   trigger: 'editor' | 'live_preview'
@@ -24,7 +24,8 @@ export function SceneBoundariesToggle({ trigger, testId = 'scene-boundaries-togg
 
   return (
     <Tooltip content={label} asChild testId={`${testId}-tooltip`}>
-      <S.Button
+      <button
+        className={styles.button}
         type="button"
         aria-label={label}
         aria-pressed={visible}
@@ -33,7 +34,7 @@ export function SceneBoundariesToggle({ trigger, testId = 'scene-boundaries-togg
         onClick={onClick}
       >
         <CylinderIcon />
-      </S.Button>
+      </button>
     </Tooltip>
   )
 }

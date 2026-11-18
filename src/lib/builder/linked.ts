@@ -1,24 +1,28 @@
-import { fromRemoteCollection, type Collection, type PaginatedResource, type RemoteCollection } from '~/lib/collections'
-import { fromRemoteItem, type Item, type RemoteItem } from '~/lib/items'
+import { CurationStatus, type Collection, type PaginatedResource } from '~/lib/collections'
+import { type Item } from '~/lib/items'
+import { type ItemCuration, type LinkedItemsQuery } from '~/lib/linkedItemStatus'
+import { type ThirdParty } from '~/lib/thirdParty'
 import {
+  fromRemoteCollection,
+  fromRemoteItem,
   fromRemoteItemCuration,
-  type ItemCuration,
-  type LinkedItemsQuery,
-  type RemoteItemCuration
-} from '~/lib/linkedItemStatus'
-import { fromRemoteThirdParty, type RemoteThirdParty, type ThirdParty } from '~/lib/thirdParty'
+  fromRemoteLinkedApprovalData,
+  fromRemoteThirdParty,
+  toLinkedItemsQueryString
+} from './mappers'
 import { request } from './transport'
+import type {
+  RemoteItemsPage,
+  RemoteLinkedApprovalData,
+  RemotePublishLinkedItemsResult,
+  RemoteThirdParty,
+  RemoteTOSBody
+} from './wire'
 
 /** A third party: GET /thirdParties/{id}. 404 for an unpublished one the signer doesn't manage. */
 export async function fetchThirdParty(address: string, thirdPartyId: string): Promise<ThirdParty> {
   const remote = await request<RemoteThirdParty>(address, 'GET', `/thirdParties/${encodeURIComponent(thirdPartyId)}`)
   return fromRemoteThirdParty(remote)
-}
-
-/** Every third party the signer manages (on chain or virtual): GET /thirdParties. */
-export async function fetchThirdParties(address: string): Promise<ThirdParty[]> {
-  const remote = await request<RemoteThirdParty[]>(address, 'GET', '/thirdParties')
-  return remote.map(fromRemoteThirdParty)
 }
 
 /**
@@ -63,15 +67,11 @@ export async function fetchLinkedCollectionItems(
   limit: number,
   filter: LinkedItemsQuery = {}
 ): Promise<LinkedItemsPage> {
-  const query = new URLSearchParams({ page: String(page), limit: String(limit) })
-  if (filter.status) query.set('status', filter.status)
-  if (filter.synced !== undefined) query.set('synced', String(filter.synced))
-  if (filter.mappingStatus) query.set('mappingStatus', filter.mappingStatus)
-  const remote = await request<PaginatedResource<RemoteItem>>(
+  const remote = await request<RemoteItemsPage>(
     address,
     'GET',
     `/collections/${collectionId}/items`,
-    `?${query.toString()}`
+    toLinkedItemsQueryString(page, limit, filter)
   )
   return { ...remote, results: remote.results.map(fromRemoteItem) }
 }
@@ -95,13 +95,8 @@ export async function fetchAllLinkedCollectionItems(
 export async function fetchPendingLinkedItems(address: string, collectionId: string, limit = 50): Promise<Item[]> {
   const items: Item[] = []
   for (let page = 1; ; page++) {
-    const query = `?${new URLSearchParams({ page: String(page), limit: String(limit), status: 'pending' }).toString()}`
-    const remote = await request<PaginatedResource<RemoteItem>>(
-      address,
-      'GET',
-      `/collections/${collectionId}/items`,
-      query
-    )
+    const query = toLinkedItemsQueryString(page, limit, { status: CurationStatus.PENDING })
+    const remote = await request<RemoteItemsPage>(address, 'GET', `/collections/${collectionId}/items`, query)
     items.push(...remote.results.map(fromRemoteItem))
     if (page >= remote.pages || remote.results.length === 0) break
   }
@@ -123,11 +118,13 @@ export async function publishLinkedItems(
   itemIds: string[],
   cheque: SlotsCheque
 ): Promise<PublishLinkedItemsResult> {
-  const result = await request<{
-    collection: RemoteCollection
-    items: RemoteItem[]
-    itemCurations: RemoteItemCuration[]
-  }>(address, 'POST', `/collections/${collectionId}/publish`, '', { itemIds, cheque })
+  const result = await request<RemotePublishLinkedItemsResult>(
+    address,
+    'POST',
+    `/collections/${collectionId}/publish`,
+    '',
+    { itemIds, cheque }
+  )
   return {
     collection: fromRemoteCollection(result.collection),
     items: result.items.map(fromRemoteItem),
@@ -149,7 +146,7 @@ export async function saveLinkedItemsTOS(
     'POST',
     `/collections/${collection.id}/tos`,
     '',
-    { event: PUBLISH_LINKED_ITEMS_TOS_EVENT, email, collection_address: collection.id, hashes },
+    { event: PUBLISH_LINKED_ITEMS_TOS_EVENT, email, collection_address: collection.id, hashes } satisfies RemoteTOSBody,
     false
   )
 }
@@ -167,16 +164,6 @@ export type LinkedApprovalData = {
 
 /** GET /collections/{id}/approvalData. */
 export async function fetchLinkedApprovalData(address: string, collectionId: string): Promise<LinkedApprovalData> {
-  const remote = await request<{
-    cheque: SlotsCheque
-    root: string | null
-    content_hashes: Record<string, string>
-    chequeWasConsumed: boolean
-  }>(address, 'GET', `/collections/${collectionId}/approvalData`)
-  return {
-    cheque: remote.cheque,
-    root: remote.root,
-    contentHashes: remote.content_hashes,
-    chequeWasConsumed: remote.chequeWasConsumed
-  }
+  const remote = await request<RemoteLinkedApprovalData>(address, 'GET', `/collections/${collectionId}/approvalData`)
+  return fromRemoteLinkedApprovalData(remote)
 }

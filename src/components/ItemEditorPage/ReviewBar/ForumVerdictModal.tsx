@@ -4,7 +4,8 @@ import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
 import { type Collection } from '~/lib/collections'
 import { openForumPost } from '~/lib/forumPost'
-import * as S from './ForumVerdictModal.styles'
+import styles from './ForumVerdictModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 type Props = {
   collection: Collection & { forumLink: string }
@@ -17,13 +18,13 @@ export function ForumVerdictModal({ collection, onClose }: Props) {
   const title = t('item_editor.review.verdict.title')
   return (
     <Modal title={title} onClose={onClose} hideTitle testId="review-verdict">
-      <S.Wrap>
-        <S.Icon aria-hidden>
+      <div className={styles.wrap}>
+        <div className={styles.icon} aria-hidden>
           <ForumIcon />
-        </S.Icon>
-        <S.Heading>{title}</S.Heading>
-        <S.Text>{t('item_editor.review.verdict.body', { collection: collection.name })}</S.Text>
-        <S.Actions>
+        </div>
+        <h3 className={styles.heading}>{title}</h3>
+        <p className={styles.text}>{t('item_editor.review.verdict.body', { collection: collection.name })}</p>
+        <div className={shared.modalActions}>
           <Button type="button" variant="secondary" data-testid="review-verdict-done" onClick={onClose}>
             {t('item_editor.review.verdict.done')}
           </Button>
@@ -35,8 +36,8 @@ export function ForumVerdictModal({ collection, onClose }: Props) {
             {t('item_editor.review.verdict.open_forum')}
             <OpenInNewIcon fontSize="small" aria-hidden />
           </Button>
-        </S.Actions>
-      </S.Wrap>
+        </div>
+      </div>
     </Modal>
   )
 }

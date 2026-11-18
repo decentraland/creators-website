@@ -22,7 +22,8 @@ import { formatTimeAgo } from '~/lib/time'
 import { ForumVerdictModal } from './ForumVerdictModal'
 import { LinkedApprovalFlowModal } from './LinkedApprovalFlowModal'
 import { ThirdPartyStatusFlow } from './ThirdPartyStatusFlow'
-import * as S from './ReviewBar.styles'
+import styles from './ReviewBar.module.css'
+import { Link } from 'react-router-dom'
 
 type Props = {
   session: Session
@@ -100,16 +101,28 @@ export function LinkedReviewBar({
   }
 
   return (
-    <S.ReviewBar role="toolbar" aria-label={t('item_editor.review.title')} data-testid="review-bar">
-      <S.Identity>
-        <S.BackLink to={curationListUrl()} aria-label={t('item_editor.review.back')} data-testid="review-back">
+    <div
+      className={styles.reviewBar}
+      role="toolbar"
+      aria-label={t('item_editor.review.title')}
+      data-testid="review-bar"
+    >
+      <div className={styles.identity}>
+        <Link
+          className={styles.backLink}
+          to={curationListUrl()}
+          aria-label={t('item_editor.review.back')}
+          data-testid="review-back"
+        >
           <ArrowBackIcon fontSize="small" />
-        </S.BackLink>
-        <S.Name title={collection.name}>{collection.name}</S.Name>
+        </Link>
+        <h1 className={styles.name} title={collection.name}>
+          {collection.name}
+        </h1>
         <CollectionStatusPill collection={collection} />
-      </S.Identity>
+      </div>
 
-      <S.Meta>
+      <div className={styles.meta}>
         {!isLoading && (
           <span data-testid="review-linked-progress">
             {pendingItems.length === 0
@@ -123,7 +136,8 @@ export function LinkedReviewBar({
           </span>
         )}
         {assignee ? (
-          <S.AssigneeChip
+          <button
+            className={styles.assigneeChip}
             type="button"
             aria-label={t('item_editor.review.change_assignee')}
             data-testid="review-assignee"
@@ -131,18 +145,23 @@ export function LinkedReviewBar({
           >
             <ProfileBadge address={assignee} self={assignee === address.toLowerCase()} />
             <EditIcon fontSize="inherit" />
-          </S.AssigneeChip>
+          </button>
         ) : (
           curation && (
-            <S.AssigneeChip type="button" data-testid="review-assign-me" onClick={() => setDialog('assign')}>
+            <button
+              className={styles.assigneeChip}
+              type="button"
+              data-testid="review-assign-me"
+              onClick={() => setDialog('assign')}
+            >
               <AssignIcon fontSize="small" />
               {t('item_editor.review.assign_to_me')}
-            </S.AssigneeChip>
+            </button>
           )
         )}
-      </S.Meta>
+      </div>
 
-      <S.Actions>
+      <div className={styles.actions}>
         {pendingItems.length > reviewedCount && (
           <Button type="button" size="sm" variant="dark" data-testid="review-linked-next" onClick={reviewNext}>
             {t('item_editor.linked_review.review_next')}
@@ -206,7 +225,7 @@ export function LinkedReviewBar({
               {t('item_editor.linked_review.enable_third_party')}
             </Button>
           ))}
-      </S.Actions>
+      </div>
 
       {dialog === 'assign' && (
         <AssignCuratorModal
@@ -269,6 +288,6 @@ export function LinkedReviewBar({
           onClose={closeDialog}
         />
       )}
-    </S.ReviewBar>
+    </div>
   )
 }

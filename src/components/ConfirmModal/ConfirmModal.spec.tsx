@@ -3,6 +3,7 @@ import { type ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TranslationProvider } from '~/intl'
+import { useNotifications } from '~/lib/notifications'
 import { ConfirmModal } from './ConfirmModal'
 
 const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
@@ -42,9 +43,12 @@ describe('ConfirmModal', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('shows failure copy under the description', () => {
+  it('reports a failed confirm as an error toast, leaving the dialog as it was', () => {
     renderModal({ error: 'Something went wrong' })
-    expect(screen.getByTestId('confirm-modal-error')).toHaveTextContent('Something went wrong')
+    expect(useNotifications.getState().toasts).toContainEqual(
+      expect.objectContaining({ message: 'Something went wrong', type: 'error' })
+    )
+    expect(screen.getByTestId('confirm-modal')).not.toHaveTextContent('Something went wrong')
   })
 
   it('renders a single action when only one is given', () => {

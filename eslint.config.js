@@ -32,17 +32,19 @@ const UI2_STYLING = {
   name: 'decentraland-ui2',
   importNames: ['styled', 'keyframes', 'GlobalStyles'],
   message:
-    'Styled defs live only in *.styles.ts, through @emotion/styled. See docs/DECISIONS.md (Pre-monorepo refactor).'
+    'Components are styled with CSS Modules; ui2 styling helpers stay out. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 
-const STYLES_FILES = ['src/**/*.styles.ts']
+// The two Emotion files left, styling decentraland-ui2's Tooltip and Navbar until the monorepo replaces both.
+const STYLES_FILES = ['src/components/Tooltip/Tooltip.styles.ts', 'src/components/TopNav/TopNav.styles.ts']
 const EMOTION_ALL = {
   regex: '^@emotion/',
-  message: 'Styling is migrating to CSS Modules; add no new Emotion. See docs/DECISIONS.md (Pre-monorepo refactor).'
+  message: 'Components are styled with CSS Modules; add no Emotion. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 const EMOTION_EXCEPT_STYLED = {
   regex: '^@emotion/(?!styled(/|$))',
-  message: 'Only @emotion/styled is allowed, and only in *.styles.ts. See docs/DECISIONS.md (Pre-monorepo refactor).'
+  message:
+    'Only @emotion/styled, and only in the Tooltip and TopNav styles. See docs/DECISIONS.md (Pre-monorepo refactor).'
 }
 const MUI = {
   regex: '^@mui/',
@@ -81,15 +83,29 @@ const DYNAMIC_ALL_ALLOWED = [WEARABLE_PREVIEW]
 
 const SEAM_5 = 'See CONVENTIONS.md seam 5.'
 const BUILDER_TRANSPORT = {
-  group: ['~/lib/builder/transport'],
+  group: ['~/lib/builder/transport', '**/builder/transport'],
   message: `Only src/lib/builder imports its transport; call the endpoint functions from ~/lib/builder. ${SEAM_5}`
+}
+const BUILDER_WIRE = {
+  group: ['~/lib/builder/wire', '~/lib/builder/mappers', '**/builder/wire', '**/builder/mappers'],
+  message: `builder-server's wire types and mappers stay inside src/lib/builder; its endpoint functions take and return domain types. ${SEAM_5}`
 }
 const BUILDER_IN_COMPONENTS_MESSAGE = `Components get builder-server data through hooks and import only URL helpers, error classification and types from ~/lib/builder. ${SEAM_5}`
 const BUILDER_IN_COMPONENTS = {
   paths: [
     {
       name: '~/lib/builder',
-      allowImportNames: ['getContentsStorageUrl', 'isRefusedRequest', 'BuilderServerError', 'COLLECTION_LOCKED_STATUS'],
+      allowImportNames: [
+        'getContentsStorageUrl',
+        'isRefusedRequest',
+        'BuilderServerError',
+        'COLLECTION_LOCKED_STATUS',
+        'ValidationLimitError',
+        'isAppealAlreadyOpen',
+        'isCollectionBusy',
+        'isReviewConflict',
+        'isValidationRunning'
+      ],
       allowTypeImports: true,
       message: BUILDER_IN_COMPONENTS_MESSAGE
     }
@@ -97,6 +113,7 @@ const BUILDER_IN_COMPONENTS = {
   patterns: [{ group: ['~/lib/builder/*'], message: BUILDER_IN_COMPONENTS_MESSAGE }]
 }
 const SPEC_FILES = ['**/*.spec.{ts,tsx}', '**/*.test.{ts,tsx}']
+const SRC_SPEC_FILES = SPEC_FILES.map(glob => `src/${glob}`)
 
 export default tseslint.config(
   { ignores: ['dist/**', 'coverage/**'] },
@@ -182,13 +199,24 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-restricted-imports': ['error', UI2] }
   },
 
-  // Pre-monorepo fence (docs/DECISIONS.md, "Pre-monorepo refactor"): the monorepo has no Emotion or MUI,
-  // so no new usage; @emotion/styled stays in *.styles.ts until the CSS Modules migration.
-  // The same rule keeps the builder-server transport inside src/lib/builder and components off its endpoints
-  // (CONVENTIONS.md seam 5); component specs import endpoints to mock them, so they stay out of that block.
+  // Pre-monorepo fence (docs/DECISIONS.md, "Pre-monorepo refactor"): the monorepo has no Emotion or MUI, so no
+  // usage; @emotion/styled stays only in the Tooltip and TopNav styles, which wrap ui2 until the move.
+  // The same rule keeps the builder-server transport and wire contract inside src/lib/builder and components off
+  // its endpoints (CONVENTIONS.md seam 5); component specs import endpoints to mock them, so they stay out of that
+  // block, and specs build their fixtures from wire rows, so they may import the wire contract.
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: [...STYLES_FILES, 'src/lib/builder/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [EMOTION_ALL, MUI, BUILDER_TRANSPORT, BUILDER_WIRE, ETHERS, DCL_TRANSACTIONS] }
+      ]
+    }
+  },
+  {
+    files: SRC_SPEC_FILES,
+    ignores: ['src/lib/builder/**'],
     rules: {
       'no-restricted-imports': ['error', { patterns: [EMOTION_ALL, MUI, BUILDER_TRANSPORT, ETHERS, DCL_TRANSACTIONS] }]
     }
@@ -215,7 +243,7 @@ export default tseslint.config(
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: [EMOTION_EXCEPT_STYLED, MUI, BUILDER_TRANSPORT, ETHERS, DCL_TRANSACTIONS] }
+        { patterns: [EMOTION_EXCEPT_STYLED, MUI, BUILDER_TRANSPORT, BUILDER_WIRE, ETHERS, DCL_TRANSACTIONS] }
       ]
     }
   },

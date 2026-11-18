@@ -1,8 +1,9 @@
 import type { CSSProperties, SVGProps } from 'react'
-import * as S from './SaleIcon.styles'
+import { cx } from '~/lib/cx'
+import styles from './SaleIcon.module.css'
 
 // The Shop's glyphs for this modal, inlined with the same paths so both draw identically. Each fills or strokes with
-// currentColor; `ico` is the class the modal's styles size and tint them by.
+// currentColor; `data-sale-icon` is the hook the modal's styles size and tint them by.
 const GLYPHS = {
   alert: (
     <path
@@ -69,7 +70,7 @@ export type SaleIconName = keyof typeof GLYPHS
 
 type Props = Omit<SVGProps<SVGSVGElement>, 'name'> & {
   name: SaleIconName
-  /** Square size in px; without it the `ico` class sizes it (20px). */
+  /** Square size in px; without it the glyph is 20px. */
   size?: number
   color?: string
 }
@@ -78,16 +79,17 @@ type Props = Omit<SVGProps<SVGSVGElement>, 'name'> & {
 export function SaleIcon({ name, size, color, className, style, ...rest }: Props) {
   const sized: CSSProperties = { ...(size ? { width: size, height: size } : {}), ...(color ? { color } : {}), ...style }
   return (
-    <S.Svg
+    <svg
+      className={cx(styles.svg, className)}
+      data-sale-icon
       viewBox="0 0 24 24"
       fill="none"
       focusable="false"
       aria-hidden={rest.role ? undefined : true}
-      className={className ? `ico ${className}` : 'ico'}
       style={sized}
       {...rest}
     >
       {GLYPHS[name]}
-    </S.Svg>
+    </svg>
   )
 }

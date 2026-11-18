@@ -9,8 +9,9 @@ import {
   type ReactNode
 } from 'react'
 import { createPortal } from 'react-dom'
+import { Button } from '~/components/Button'
 import { MoreHorizIcon } from '~/components/Icons'
-import * as S from './ActionsMenu.styles'
+import styles from './ActionsMenu.module.css'
 
 type MenuContextValue = { close: () => void }
 
@@ -83,8 +84,9 @@ export function ActionsMenu({ label, variant = 'header', tone = 'default', testI
   }, [isOpen])
 
   return (
-    <S.Wrap ref={wrapRef}>
-      <S.Trigger
+    <div className={styles.wrap} ref={wrapRef}>
+      <Button
+        className={styles.trigger}
         variant={variant === 'row' ? 'secondary' : 'glass'}
         size="icon"
         type="button"
@@ -96,17 +98,24 @@ export function ActionsMenu({ label, variant = 'header', tone = 'default', testI
         onClick={() => setOpen(open => !open)}
       >
         <MoreHorizIcon fontSize={variant === 'row' ? 'small' : 'medium'} />
-      </S.Trigger>
+      </Button>
       {isOpen &&
         createPortal(
           <MenuContext.Provider value={{ close: () => setOpen(false) }}>
-            <S.Menu ref={menuRef} role="menu" style={menuStyle} data-tone={tone} data-testid={`${testId}-menu`}>
+            <div
+              className={styles.menu}
+              ref={menuRef}
+              role="menu"
+              style={menuStyle}
+              data-tone={tone}
+              data-testid={`${testId}-menu`}
+            >
               {children}
-            </S.Menu>
+            </div>
           </MenuContext.Provider>,
           document.body
         )}
-    </S.Wrap>
+    </div>
   )
 }
 
@@ -124,7 +133,8 @@ type ItemProps = {
 export function ActionsMenuItem({ children, onClick, disabled = false, title, tone = 'default', testId }: ItemProps) {
   const { close } = useContext(MenuContext)
   return (
-    <S.Item
+    <button
+      className={styles.item}
       type="button"
       role="menuitem"
       aria-disabled={disabled || undefined}
@@ -138,10 +148,10 @@ export function ActionsMenuItem({ children, onClick, disabled = false, title, to
       }}
     >
       {children}
-    </S.Item>
+    </button>
   )
 }
 
 export function ActionsMenuDivider() {
-  return <S.Divider />
+  return <div className={styles.divider} />
 }

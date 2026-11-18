@@ -3,7 +3,8 @@ import { JumpInIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { track } from '~/lib/analytics'
 import { previewCollection } from '~/lib/explorer'
-import * as S from './EditorPreviewLaunch.styles'
+import styles from './EditorPreviewLaunch.module.css'
+import { Button } from '~/components/Button'
 
 type Props = {
   collectionId: string
@@ -18,7 +19,8 @@ export function EditorPreviewLaunch({ collectionId, itemCount, reviewing }: Prop
   const [isLaunching, setLaunching] = useState(false)
 
   return (
-    <S.Launch
+    <Button
+      className={styles.launch}
       type="button"
       variant="dark"
       disabled={itemCount === 0}
@@ -37,6 +39,6 @@ export function EditorPreviewLaunch({ collectionId, itemCount, reviewing }: Prop
     >
       {t('preview_collection_button.label')}
       <JumpInIcon />
-    </S.Launch>
+    </Button>
   )
 }

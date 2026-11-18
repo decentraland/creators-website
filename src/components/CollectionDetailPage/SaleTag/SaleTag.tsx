@@ -1,6 +1,7 @@
 import { useIntl } from 'react-intl'
 import { useTranslation } from '~/intl'
-import * as S from './SaleTag.styles'
+import { cx } from '~/lib/cx'
+import styles from './SaleTag.module.css'
 
 type Props = {
   /** Percent off; a non-whole one shows up to two decimals in the viewer's locale. Zero falls back to the plain word. */
@@ -14,14 +15,14 @@ export function SaleTag({ pct, className, testId }: Props) {
   const { t } = useTranslation()
   const intl = useIntl()
   return (
-    <S.Root className={className} data-testid={testId}>
+    <span className={cx(styles.root, className)} data-testid={testId}>
       {/* Decorative: the number beside it carries the meaning. */}
       <span aria-hidden>🔥</span>
-      <S.Pct>
+      <b className={styles.pct}>
         {pct > 0
           ? t('collection_detail_page.price.off', { pct: intl.formatNumber(pct, { maximumFractionDigits: 2 }) })
           : t('collection_detail_page.price.sale')}
-      </S.Pct>
-    </S.Root>
+      </b>
+    </span>
   )
 }

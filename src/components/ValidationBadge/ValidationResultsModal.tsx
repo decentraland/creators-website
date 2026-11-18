@@ -2,7 +2,7 @@ import { Modal } from '~/components/Modal'
 import { useTranslation } from '~/intl'
 import { type ValidationIssue } from '~/lib/validation'
 import { ItemValidationCard, type ValidationSubject } from './ItemValidationCard'
-import * as S from './ValidationResultsModal.styles'
+import styles from './ValidationResultsModal.module.css'
 
 /** One item's results in a list of several. */
 export type ItemResult = { id: string; subject: ValidationSubject; issues: ValidationIssue[]; onSelect?: () => void }
@@ -30,7 +30,7 @@ export function ValidationResultsModal({
   return (
     <Modal title={t('item_editor.validation.modal_title')} onClose={onClose} compact testId={`${testId}-modal`}>
       {results ? (
-        <S.List>
+        <div className={styles.list}>
           {results.map(result => (
             <ItemValidationCard
               key={result.id}
@@ -40,7 +40,7 @@ export function ValidationResultsModal({
               testId={`${testId}-${result.id}`}
             />
           ))}
-        </S.List>
+        </div>
       ) : (
         <ItemValidationCard subject={subject} issues={issues} onRerun={onRerun} testId={testId} />
       )}

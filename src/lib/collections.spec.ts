@@ -5,11 +5,8 @@ import {
   CollectionDisplayStatus,
   canManageCollectionItems,
   canSellCollectionItems,
-  CollectionSort,
   CollectionStatusFilter,
-  CollectionType,
   CurationStatus,
-  fromRemoteCollection,
   getCollectionDisplayStatus,
   getCollectionRole,
   hasCollectionRole,
@@ -22,13 +19,12 @@ import {
   listFilterToParams,
   summarizeCollections,
   LINKED_FILTER,
-  toCollectionsQueryString,
-  toRemoteCollection,
   validateCollectionName,
   withoutCollection,
-  type Collection,
-  type RemoteCollection
+  type Collection
 } from './collections'
+import { fromRemoteCollection, toCollectionsQueryString } from '~/lib/builder/mappers'
+import type { RemoteCollection } from '~/lib/builder/wire'
 
 const remote: RemoteCollection = {
   id: 'a1b2',
@@ -51,80 +47,6 @@ const remote: RemoteCollection = {
   linked_contract_network: null,
   is_mapping_complete: true
 }
-
-describe('fromRemoteCollection', () => {
-  it('maps the wire shape to the domain model with epoch dates and a numeric item count', () => {
-    const collection = fromRemoteCollection(remote)
-    expect(collection).toMatchObject({
-      id: 'a1b2',
-      name: 'Pirate Hats',
-      owner: remote.eth_address,
-      contractAddress: '0xcontract',
-      salt: '0xsalt',
-      isPublished: true,
-      isApproved: true,
-      itemCount: 250,
-      minters: ['0xminter']
-    })
-    expect(collection.createdAt).toBe(+new Date('2026-03-01T10:00:00Z'))
-    expect(collection.updatedAt).toBe(+new Date('2026-04-02T10:00:00Z'))
-    expect(collection.reviewedAt).toBe(+new Date('2026-04-01T10:00:00Z'))
-    expect(collection.lock).toBeUndefined()
-  })
-
-  it('maps the list-only curation status and last activity', () => {
-    const collection = fromRemoteCollection({
-      ...remote,
-      curation_status: CurationStatus.PENDING,
-      last_activity_at: '2026-10-02T11:13:21Z'
-    })
-    expect(collection.curationStatus).toBe(CurationStatus.PENDING)
-    expect(collection.lastActivityAt).toBe(+new Date('2026-10-02T11:13:21Z'))
-    expect(fromRemoteCollection(remote).lastActivityAt).toBeUndefined()
-  })
-
-  it('treats a missing item_count as zero and omits empty optionals', () => {
-    const collection = fromRemoteCollection({
-      ...remote,
-      item_count: undefined,
-      salt: null,
-      contract_address: null,
-      forum_link: null,
-      reviewed_at: null
-    })
-    expect(collection.itemCount).toBe(0)
-    expect(collection.salt).toBeUndefined()
-    expect(collection.contractAddress).toBeUndefined()
-    expect(collection.forumLink).toBeUndefined()
-    expect(collection.reviewedAt).toBeUndefined()
-  })
-})
-
-describe('toCollectionsQueryString', () => {
-  it('serializes to the snake_case params builder-server expects, dropping absent ones', () => {
-    expect(
-      toCollectionsQueryString({
-        page: 2,
-        limit: 20,
-        q: 'hat',
-        type: CollectionType.STANDARD,
-        sort: CollectionSort.LAST_ACTIVITY_DESC,
-        isPublished: true
-      })
-    ).toBe('?is_published=true&type=standard&sort=LAST_ACTIVITY_DESC&q=hat&page=2&limit=20')
-  })
-
-  it('sends a contract address as contract_address', () => {
-    expect(toCollectionsQueryString({ contractAddress: '0xabc', page: 1, limit: 1 })).toBe(
-      '?contract_address=0xabc&page=1&limit=1'
-    )
-  })
-
-  it('serializes is_published=false and returns an empty string with no params', () => {
-    expect(toCollectionsQueryString({ isPublished: false })).toBe('?is_published=false')
-    expect(toCollectionsQueryString({})).toBe('')
-  })
-})
 
 describe('listFilterToParams', () => {
   it('lists standard and linked collections together under All', () => {
@@ -302,43 +224,6 @@ describe('isCollectionLocked', () => {
     expect(isCollectionLocked({ ...draft, lock: now - 25 * HOUR }, now)).toBe(false)
     expect(isCollectionLocked({ ...draft, lock: undefined }, now)).toBe(false)
     expect(isCollectionLocked({ ...base, isPublished: true, lock: now - HOUR }, now)).toBe(false)
-  })
-})
-
-describe('toRemoteCollection', () => {
-  it('maps to the snake_case upsert payload, forcing the publish flags off', () => {
-    const collection = fromRemoteCollection(remote)
-    expect(toRemoteCollection(collection)).toEqual({
-      id: 'a1b2',
-      name: 'Pirate Hats',
-      eth_address: remote.eth_address,
-      salt: '0xsalt',
-      contract_address: '0xcontract',
-      urn: remote.urn,
-      is_published: false,
-      is_approved: false,
-      linked_contract_address: null,
-      linked_contract_network: null,
-      minters: ['0xminter'],
-      managers: [],
-      forum_link: null,
-      reviewed_at: '2026-04-01T10:00:00.000Z'
-    })
-  })
-
-  it('nulls absent optionals', () => {
-    const collection = fromRemoteCollection({
-      ...remote,
-      salt: null,
-      contract_address: null,
-      forum_link: null,
-      reviewed_at: null
-    })
-    const payload = toRemoteCollection(collection)
-    expect(payload.salt).toBeNull()
-    expect(payload.contract_address).toBeNull()
-    expect(payload.forum_link).toBeNull()
-    expect(payload.reviewed_at).toBeNull()
   })
 })
 

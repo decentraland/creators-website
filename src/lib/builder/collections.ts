@@ -1,17 +1,22 @@
+import { type Collection, type CollectionsList, type FetchCollectionsParams } from '~/lib/collections'
+import { type Item } from '~/lib/items'
 import {
   fromRemoteCollection,
+  fromRemoteItem,
+  toCollectionItemPreviews,
   toCollectionsQueryString,
-  toRemoteCollection,
-  type Collection,
-  type CollectionStatusCounts,
-  type CollectionsList,
-  type FetchCollectionsParams,
-  type PaginatedResource,
-  type RemoteCollection
-} from '~/lib/collections'
-import { fromRemoteItem, type Item, type RemoteItem } from '~/lib/items'
-import { getContentsStorageUrl } from './contents'
+  toRemoteCollection
+} from './mappers'
 import { request } from './transport'
+import type {
+  RemoteCollection,
+  RemoteCollectionsPage,
+  RemoteItem,
+  RemoteItemsPage,
+  RemoteLockBody,
+  RemotePublishCollectionResult,
+  RemoteTOSBody
+} from './wire'
 
 export type CollectionItemPreview = {
   id: string
@@ -28,12 +33,7 @@ export async function fetchCollections(address: string, params: FetchCollections
   const page = params.page ?? 1
   const limit = params.limit ?? 20
   const query = toCollectionsQueryString({ ...params, page, limit })
-  const remote = await request<PaginatedResource<RemoteCollection> & { counts?: CollectionStatusCounts }>(
-    address,
-    'GET',
-    `/${address}/collections`,
-    query
-  )
+  const remote = await request<RemoteCollectionsPage>(address, 'GET', `/${address}/collections`, query)
   return { ...remote, results: remote.results.map(fromRemoteCollection) }
 }
 
@@ -75,20 +75,13 @@ export async function fetchCollectionItemPreviews(
   collectionId: string,
   limit = 4
 ): Promise<CollectionItemPreview[]> {
-  const { results } = await request<{ results: RemoteItem[] }>(
+  const { results } = await request<RemoteItemsPage>(
     address,
     'GET',
     `/collections/${collectionId}/items`,
     `?page=1&limit=${limit}`
   )
-  return results
-    .filter(item => item.contents[item.thumbnail])
-    .map(item => ({
-      id: item.id,
-      name: item.name,
-      thumbnailUrl: getContentsStorageUrl(item.contents[item.thumbnail]),
-      rarity: item.rarity ?? undefined
-    }))
+  return toCollectionItemPreviews(results)
 }
 
 const PUBLISH_COLLECTION_TOS_EVENT = 'publish_collection_tos'
@@ -100,7 +93,11 @@ export async function saveCollectionTOS(address: string, collection: Collection,
     'POST',
     `/collections/${collection.id}/tos`,
     '',
-    { event: PUBLISH_COLLECTION_TOS_EVENT, email, collection_address: collection.contractAddress },
+    {
+      event: PUBLISH_COLLECTION_TOS_EVENT,
+      email,
+      collection_address: collection.contractAddress
+    } satisfies RemoteTOSBody,
     false
   )
 }
@@ -112,7 +109,7 @@ export async function saveCollectionTOS(address: string, collection: Collection,
 export async function lockCollection(address: string, collectionId: string): Promise<number> {
   const lock = await request<string>(address, 'POST', `/collections/${collectionId}/lock`, '', {
     collection_address: collectionId
-  })
+  } satisfies RemoteLockBody)
   return +new Date(lock)
 }
 
@@ -134,10 +131,6 @@ export async function publishCollectionItems(
   address: string,
   collectionId: string
 ): Promise<{ collection: Collection; items: Item[] }> {
-  const result = await request<{ collection: RemoteCollection; items: RemoteItem[] }>(
-    address,
-    'POST',
-    `/collections/${collectionId}/publish`
-  )
+  const result = await request<RemotePublishCollectionResult>(address, 'POST', `/collections/${collectionId}/publish`)
   return { collection: fromRemoteCollection(result.collection), items: result.items.map(fromRemoteItem) }
 }

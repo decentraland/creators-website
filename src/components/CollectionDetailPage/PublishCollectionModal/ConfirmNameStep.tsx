@@ -7,7 +7,7 @@ import { EMAIL_MAX_LENGTH, isValidEmail } from '~/lib/email'
 import { Button } from '~/components/Button'
 import { CollectionNameInput } from '~/components/CollectionNameInput'
 import { Checkbox } from '~/components/Checkbox'
-import * as S from './PublishCollectionModal.styles'
+import styles from './PublishCollectionModal.module.css'
 
 type Props = {
   initialName: string
@@ -67,14 +67,14 @@ export function ConfirmNameStep({
   }
 
   return (
-    <S.Step as="form" onSubmit={handleSubmit} data-testid="publish-name-step">
-      <S.Heading>{t('publish_collection_modal.name_step.title')}</S.Heading>
-      <S.Text>
+    <form className={styles.step} onSubmit={handleSubmit} data-testid="publish-name-step">
+      <h3 className={styles.heading}>{t('publish_collection_modal.name_step.title')}</h3>
+      <p className={styles.text}>
         {t('publish_collection_modal.name_step.description')}
         <br />
         {t('publish_collection_modal.name_step.description_2')}
-      </S.Text>
-      <S.InputWrapper>
+      </p>
+      <div className={styles.inputWrapper}>
         <CollectionNameInput
           value={name}
           error={shownError}
@@ -87,9 +87,10 @@ export function ConfirmNameStep({
             setEditedSinceSubmit(true)
           }}
         />
-        <S.EmailField>
+        <label className={styles.emailField}>
           {t('publish_collection_modal.name_step.email_label')}
-          <S.EmailInput
+          <input
+            className={styles.emailInput}
             type="text"
             inputMode="email"
             spellCheck={false}
@@ -108,16 +109,16 @@ export function ConfirmNameStep({
             onBlur={() => setEmailBlurred(true)}
           />
           {showEmailError && (
-            <S.ErrorText id={emailErrorId} role="alert" data-testid="publish-email-error">
+            <p className={styles.errorText} id={emailErrorId} role="alert" data-testid="publish-email-error">
               {t('publish_collection_modal.name_step.invalid_email')}
-            </S.ErrorText>
+            </p>
           )}
-        </S.EmailField>
-      </S.InputWrapper>
+        </label>
+      </div>
       <Checkbox checked={accepted} disabled={isSaving} onChange={setAccepted} testId="publish-name-accept">
         {t('publish_collection_modal.name_step.checkbox', { name: trimmed || initialName })}
       </Checkbox>
-      <S.Footer>
+      <div className={styles.footer}>
         <Button type="button" variant="secondary" disabled={isSaving} data-testid="publish-cancel" onClick={onCancel}>
           {t('publish_collection_modal.cancel')}
         </Button>
@@ -125,7 +126,7 @@ export function ConfirmNameStep({
           {t('publish_collection_modal.name_step.confirm')}
           <ChevronRightIcon fontSize="small" />
         </Button>
-      </S.Footer>
-    </S.Step>
+      </div>
+    </form>
   )
 }

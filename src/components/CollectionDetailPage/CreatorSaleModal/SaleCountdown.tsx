@@ -2,7 +2,8 @@ import { useEffect, useState, type ComponentPropsWithoutRef } from 'react'
 import { useTranslation } from '~/intl'
 import { saleTimeLeft, formatCountdown, countdownTickMs } from '~/lib/saleCountdown'
 import { SaleIcon } from './SaleIcon'
-import * as S from './SaleCountdown.styles'
+import { cx } from '~/lib/cx'
+import styles from './SaleCountdown.module.css'
 
 // Live "2d 4h" label counting down to a moment — a sale's end, or its start. Repaints on a self-adjusting
 // timer — once a minute while that moment is far off, once a second in the final hour (see countdownTickMs)
@@ -48,9 +49,9 @@ export function SaleCountdown({
   })
   if (!label) return null
   return (
-    <S.Root className={className} data-testid={testId} {...rest}>
+    <span className={cx(styles.root, className)} data-testid={testId} {...rest}>
       <SaleIcon name="clock" size={iconSize} />
       {label}
-    </S.Root>
+    </span>
   )
 }

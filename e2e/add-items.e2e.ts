@@ -2,15 +2,7 @@ import { type ElementHandle } from 'puppeteer'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { collection } from './fixtures'
 import { launchApp, type App, type LaunchOptions } from './helpers/app'
-import {
-  byTestId,
-  clickTestId,
-  selectOption,
-  selectOptions,
-  waitForEnabled,
-  waitForTestId,
-  waitForToast
-} from './helpers/dom'
+import { byTestId, clickTestId, selectOption, selectOptions, waitForTestId, waitForToast } from './helpers/dom'
 import {
   FIXTURE,
   downloadedEmoteFoldersZip,
@@ -18,7 +10,7 @@ import {
   eyesWithMaskZip,
   legacyWearableZip
 } from './helpers/files'
-import { PREVIEW_METRICS } from './helpers/preview'
+import { PREVIEW_METRICS, waitForProcessedAction } from './helpers/preview'
 
 let app: App | undefined
 afterEach(async () => {
@@ -72,7 +64,7 @@ describe('add items to a collection', () => {
       }
       // Save & Next on every draft but the last one, which shows Finish.
       const action = seen.length < 3 ? 'add-items-save-next' : 'add-items-finish'
-      await waitForEnabled(app.page, action)
+      await waitForProcessedAction(app, action)
       await clickTestId(app.page, action)
       if (seen.length < 3) {
         await app.page.waitForFunction(
@@ -112,7 +104,7 @@ describe('add items to a collection', () => {
 
     await readyDraft(app)
     await selectOption(app.page, 'item-category', 'greetings')
-    await waitForEnabled(app.page, 'add-items-finish')
+    await waitForProcessedAction(app, 'add-items-finish')
     await clickTestId(app.page, 'add-items-finish')
 
     const [item] = await savedItems(app)
@@ -132,7 +124,7 @@ describe('add items to a collection', () => {
     await readyDraft(app)
     await selectOption(app.page, 'item-category', 'hat')
     await selectOption(app.page, 'item-rarity', 'rare')
-    await waitForEnabled(app.page, 'add-items-finish')
+    await waitForProcessedAction(app, 'add-items-finish')
     await clickTestId(app.page, 'add-items-finish')
 
     const [item] = await savedItems(app)
@@ -170,7 +162,7 @@ describe('add items to a collection', () => {
     const video = (await app.page.$(byTestId('draft-video-input'))) as ElementHandle<HTMLInputElement>
     await video.uploadFile(FIXTURE.previewVideo)
     await waitForTestId(app.page, 'draft-video-preview')
-    await waitForEnabled(app.page, 'add-items-finish')
+    await waitForProcessedAction(app, 'add-items-finish')
     await clickTestId(app.page, 'add-items-finish')
 
     const [item] = await savedItems(app)

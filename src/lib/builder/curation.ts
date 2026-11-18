@@ -1,14 +1,17 @@
-import {
-  fromRemoteCuration,
-  toCurationQueryString,
-  type CollectionCuration,
-  type CurationFilters,
-  type CurationRequestStatus,
-  type RemoteCollectionCuration
-} from '~/lib/curation'
-import { fromRemoteCollection, type Collection, type PaginatedResource, type RemoteCollection } from '~/lib/collections'
-import { fromRemoteItemCuration, type ItemCuration, type RemoteItemCuration } from '~/lib/linkedItemStatus'
+import { type CollectionCuration, type CurationFilters, type CurationRequestStatus } from '~/lib/curation'
+import { type Collection, type PaginatedResource } from '~/lib/collections'
+import { type RejectReasonCode } from '~/lib/events'
+import { type ItemCuration } from '~/lib/linkedItemStatus'
+import { fromRemoteCollection, fromRemoteCuration, fromRemoteItemCuration, toCurationQueryString } from './mappers'
+import { toValidationLimitError } from './review'
 import { BuilderServerError, UNPUBLISHED_COLLECTION_STATUS, request } from './transport'
+import type {
+  RemoteCollection,
+  RemoteCollectionCuration,
+  RemoteCollectionCurationBody,
+  RemoteItemCuration,
+  RemoteItemCurationBody
+} from './wire'
 
 /** The collection's latest curation request: GET /collections/{id}/curation. Empty data when it was never reviewed. */
 export async function fetchCollectionCuration(
@@ -54,29 +57,46 @@ export async function fetchCurations(address: string): Promise<CollectionCuratio
 
 /**
  * Opens a new review request: POST /collections/{id}/curation. Creators use it to push changes of an
- * approved collection; the committee to assign a collection that was never requested. 400 while one is pending.
+ * approved collection, optionally with a note saying what changed; the committee to assign a collection that
+ * was never requested. 400 while one is pending.
  */
 export async function pushCollectionCuration(
   address: string,
   collectionId: string,
-  assignee?: string | null
+  assignee?: string | null,
+  note?: string
 ): Promise<CollectionCuration> {
-  const body = assignee === undefined ? undefined : { curation: { assignee } }
-  const remote = await request<RemoteCollectionCuration>(
-    address,
-    'POST',
-    `/collections/${collectionId}/curation`,
-    '',
-    body
-  )
-  return fromRemoteCuration(remote)
+  const curation = { ...(assignee === undefined ? {} : { assignee }), ...(note ? { note } : {}) }
+  const body = Object.keys(curation).length > 0 ? ({ curation } satisfies RemoteCollectionCurationBody) : undefined
+  try {
+    const remote = await request<RemoteCollectionCuration>(
+      address,
+      'POST',
+      `/collections/${collectionId}/curation`,
+      '',
+      body
+    )
+    return fromRemoteCuration(remote)
+  } catch (error) {
+    // A creator's changes wait for the day's automated reviews like a retry does.
+    throw toValidationLimitError(error)
+  }
+}
+
+export type CurationUpdate = {
+  status?: CurationRequestStatus
+  assignee?: string | null
+  rejectionReasons?: RejectReasonCode[]
+  rejectionMessage?: string
+  /** Kept with an approval only: what the curator wants the creator to know. */
+  note?: string
 }
 
 /** Updates the latest request: PATCH /collections/{id}/curation. Status changes and assignees are committee-only. */
 export async function updateCollectionCuration(
   address: string,
   collectionId: string,
-  curation: { status?: CurationRequestStatus; assignee?: string | null }
+  curation: CurationUpdate
 ): Promise<CollectionCuration> {
   const remote = await request<RemoteCollectionCuration>(
     address,
@@ -85,7 +105,7 @@ export async function updateCollectionCuration(
     '',
     {
       curation
-    }
+    } satisfies RemoteCollectionCurationBody
   )
   return fromRemoteCuration(remote)
 }
@@ -140,24 +160,6 @@ function chunk<T>(list: T[], size: number): T[][] {
   return chunks.length > 0 ? chunks : [[]]
 }
 
-/** The latest curation of one linked item: GET /items/{id}/curation (null before its first publish). */
-export async function fetchItemCuration(address: string, itemId: string): Promise<ItemCuration | null> {
-  try {
-    const remote = await request<RemoteItemCuration | null>(
-      address,
-      'GET',
-      `/items/${itemId}/curation`,
-      '',
-      undefined,
-      false
-    )
-    return remote ? fromRemoteItemCuration(remote) : null
-  } catch (error) {
-    if (error instanceof BuilderServerError && error.status === UNPUBLISHED_COLLECTION_STATUS) return null
-    throw error
-  }
-}
-
 /** Sends an already-curated linked item's changes for review again: POST /items/{id}/curation (no cheque). */
 export async function pushItemCuration(address: string, itemId: string): Promise<ItemCuration> {
   const remote = await request<RemoteItemCuration>(address, 'POST', `/items/${itemId}/curation`)
@@ -175,6 +177,6 @@ export async function updateItemCuration(
 ): Promise<ItemCuration> {
   const remote = await request<RemoteItemCuration>(address, 'PATCH', `/items/${itemId}/curation`, '', {
     curation: { status }
-  })
+  } satisfies RemoteItemCurationBody)
   return fromRemoteItemCuration(remote)
 }

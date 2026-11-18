@@ -36,9 +36,8 @@ async function curatedHashes(a: App): Promise<string[]> {
   const rows = JSON.stringify({ collection: submitted, items })
   const hashes = await a.page.evaluate(`(async () => {
     const { collection, items } = ${rows};
-    const [{ fromRemoteCollection }, { fromRemoteItem }, { computeLinkedItemContentHash }] = await Promise.all([
-      import('/src/lib/collections.ts'),
-      import('/src/lib/items.ts'),
+    const [{ fromRemoteCollection, fromRemoteItem }, { computeLinkedItemContentHash }] = await Promise.all([
+      import('/src/lib/builder/mappers.ts'),
       import('/src/lib/catalystEntity.ts')
     ]);
     return items.map(item => computeLinkedItemContentHash(fromRemoteCollection(collection), fromRemoteItem(item)));

@@ -16,7 +16,7 @@
       "published": "Publicadas ({count})",
       "draft": "Borrador ({count})",
       "under_review": "En revisión ({count})",
-      "rejected": "Rechazadas ({count})",
+      "rejected": "Requieren cambios ({count})",
       "disabled": "Pausadas ({count})",
       "linked": "Vinculadas ({count})"
     },
@@ -73,7 +73,7 @@
     "under_review": "En revisión",
     "under_review_hint": "Tu colección está siendo revisada para su aprobación. Te avisaremos cuando la revisión termine.",
     "published": "Publicada",
-    "rejected": "Rechazada",
+    "rejected": "Requiere cambios",
     "disabled": "Pausada",
     "disabled_hint": "Tu colección fue pausada por el equipo de curación. Ponte en contacto con tu curador asignado para revisarla.",
     "linked": "Vinculada"
@@ -134,7 +134,8 @@
         "cancel": "Cancelar",
         "confirm": "Eliminar"
       },
-      "view_in_shop": "Ver en la Tienda"
+      "view_in_shop": "Ver en la Tienda",
+      "activity": "Actividad"
     },
     "filter": {
       "all": "Todos ({count})",
@@ -162,11 +163,11 @@
     "item_status": {
       "published": "Publicado",
       "modified": "Modificado",
-      "rejected": "Rechazado",
+      "rejected": "Requiere cambios",
       "under_review": "En revisión",
       "missing": "Incompleto",
       "modified_hint": "Cambios guardados pero aún no enviados al comité de curaduría. Envíalos a revisión para publicarlos.",
-      "rejected_hint": "El comité de curaduría rechazó los últimos cambios. Los compradores reciben la última versión aprobada hasta que se aprueben los cambios actualizados.",
+      "rejected_hint": "El comité de curaduría pidió cambios sobre las últimas modificaciones. Los compradores reciben la última versión aprobada hasta que se aprueben las nuevas.",
       "under_review_hint": "Cambios enviados al comité de curaduría. Los compradores reciben la última versión aprobada hasta que los cambios se aprueben.",
       "missing_hint": "Los archivos de este ítem no están publicados, por lo que puede no funcionar en el mundo. Envía la colección a revisión o ponte en contacto con un curador para que lo vuelvan a desplegar."
     },
@@ -321,17 +322,22 @@
     "request_review": {
       "action": "Solicitar revisión de nuevo",
       "title": "Solicitar revisión de nuevo",
-      "description": "El comité de curaduría revisará tu colección de nuevo. Asegúrate de haber resuelto los motivos del rechazo antes.",
+      "description": "El comité de curaduría revisará tu colección de nuevo. Asegúrate de haber hecho antes los cambios que te pidieron.",
       "confirm": "Solicitar revisión",
       "cancel": "Cancelar",
       "error": "No pudimos solicitar una nueva revisión. Inténtalo de nuevo.",
       "success": "Tu colección se envió a revisión"
     },
     "review_notice": {
-      "rejected": "El comité de curaduría rechazó la última versión de esta colección. Actualiza tus ítems y envíalos a revisión de nuevo."
+      "rejected": "El comité de curaduría pidió cambios en la última versión de esta colección. Actualiza tus ítems y envíalos a revisión de nuevo."
     },
     "push_blocker": {
-      "has_invalid_items": "Corrige {count, plural, one {# ítem marcado} other {# ítems marcados}} en rojo antes de enviar a revisión."
+      "has_invalid_items": "Corrige {count, plural, one {# ítem marcado} other {# ítems marcados}} en rojo antes de enviar a revisión.",
+      "reviewing": "Tu colección se está revisando automáticamente. Podrás publicar cambios cuando termine (unos 5 minutos)."
+    },
+    "push_note": {
+      "label": "¿Qué cambió? (opcional)",
+      "placeholder": "Cuéntale al curador qué cambiaste, por ejemplo \"solo agregué una etiqueta\""
     }
   },
   "publish_collection_modal": {
@@ -760,13 +766,13 @@
       "requested": "Revisión solicitada {time}",
       "created": "Creada {time}",
       "approved": "Aprobada {time}",
-      "rejected": "Rechazada {time}",
+      "rejected": "Cambios pedidos {time}",
       "change_assignee": "Cambiar el curador asignado",
       "assign_to_me": "Asignármela",
       "cancel": "Cancelar",
       "action": {
         "approve": "Aprobar",
-        "reject": "Rechazar",
+        "reject": "Pedir cambios",
         "enable": "Habilitar",
         "disable": "Deshabilitar",
         "deploy_missing": "Subir ítems faltantes"
@@ -778,12 +784,12 @@
         "done": "Listo"
       },
       "reject": {
-        "title": "¿Rechazar {collection}?",
-        "first": "La colección no se podrá mintear. El creador la verá como rechazada.",
-        "changes": "La colección conserva su versión aprobada. El creador verá los cambios como rechazados.",
-        "confirm": "Rechazar",
-        "error": "No pudimos rechazar la colección. Inténtalo de nuevo.",
-        "success": "{collection} fue rechazada"
+        "title": "¿Pedir cambios en {collection}?",
+        "first": "La colección no se podrá mintear. El creador verá que requiere cambios.",
+        "changes": "La colección conserva su versión aprobada. El creador verá que los cambios requieren correcciones.",
+        "confirm": "Pedir cambios",
+        "error": "No pudimos enviar el pedido. Inténtalo de nuevo.",
+        "success": "Se pidieron cambios en {collection}"
       },
       "disable": {
         "title": "¿Deshabilitar {collection}?",
@@ -799,7 +805,9 @@
         "pass": "Todos los ítems pasan todas las verificaciones.",
         "warnings": "Algunos ítems tienen advertencias. Haz clic para verlas.",
         "errors": "Algunos ítems tienen errores. Haz clic para verlos."
-      }
+      },
+      "activity": "Actividad",
+      "creator_replied": "El creador respondió"
     },
     "discard": {
       "title": "¿Descartar tus cambios?",
@@ -993,6 +1001,10 @@
         "signing": "Confirma en tu wallet para habilitar el tercero.",
         "pending": "Habilitando tercero…"
       }
+    },
+    "read_only_reviewing": "Este ítem es de solo lectura mientras se ejecuta la revisión automática de la colección.",
+    "curator_request": {
+      "title": "Un curador pidió cambios"
     }
   },
   "zoom_controls": {
@@ -1005,8 +1017,9 @@
     "search_placeholder": "Buscar por nombre",
     "filter": {
       "to_review": "Por revisar",
+      "auto_reviewing": "En revisión automática",
       "approved": "Aprobadas",
-      "rejected": "Rechazadas",
+      "rejected": "Requieren cambios",
       "disabled": "Deshabilitadas",
       "all_assignees": "Todos los curadores",
       "you": "{name} (tú)",
@@ -1044,7 +1057,8 @@
       "discussion": "Discusión",
       "forum_post": "Foro",
       "not_posted": "Sin publicar",
-      "third_party": "Tercero"
+      "third_party": "Tercero",
+      "creator_replied": "El creador respondió"
     },
     "error": {
       "title": "No pudimos cargar las colecciones",
@@ -1479,8 +1493,9 @@
   },
   "curation_state": {
     "to_review": "Por revisar",
+    "auto_reviewing": "Revisión automática",
     "approved": "Aprobada",
-    "rejected": "Rechazada",
+    "rejected": "Requiere cambios",
     "disabled": "Deshabilitada"
   },
   "review_type": {
@@ -1573,7 +1588,11 @@
       "description": "El creador guardó cambios en algunos ítems después de que abriste esta colección. Revisa la última versión antes de aprobarla.",
       "confirm": "Revisar cambios"
     },
-    "enable_body": "Habilita la colección para que sus ítems se puedan mintear de nuevo, tal como se aprobaron por última vez. Los cambios que el creador no envió a revisión quedan afuera. Confirma en tu wallet."
+    "enable_body": "Habilita la colección para que sus ítems se puedan mintear de nuevo, tal como se aprobaron por última vez. Los cambios que el creador no envió a revisión quedan afuera. Confirma en tu wallet.",
+    "note": {
+      "label": "Nota para el creador (opcional)",
+      "placeholder": "Algo que el creador deba saber o corregir más adelante"
+    }
   },
   "item_size": {
     "label": "Tamaño del ítem",
@@ -2050,6 +2069,190 @@
     "has_video": {
       "title": "Estos ítems aún no se pueden aprobar",
       "description": "{items} incluyen un video de vista previa, que los servidores de contenido no aceptan en ítems vinculados. No se registró nada en la blockchain. El creador debe volver a subirlos sin el video."
+    }
+  },
+  "review_flow": {
+    "notice": {
+      "automated_reviewing": "Estamos revisando tu colección automáticamente. Suele tardar unos minutos.",
+      "awaiting_curator": "La revisión automática pasó. Tu colección ahora espera la revisión de un curador.",
+      "human_review": "Un curador revisará tu colección.",
+      "needs_curator": "No se pudo hacer la revisión automática de tu colección. Ahora espera la revisión de un curador.",
+      "appealed": "Pediste una revisión humana. Un curador revisará tu colección.",
+      "rejected_by_validator": "La revisión automática encontró problemas en tus ítems. Corrígelos y revisa de nuevo, o pide que un curador revise tu colección.",
+      "rejected_by_curator": "Un curador pidió cambios en tu colección. Actualiza tus ítems y luego pide la revisión de nuevo.",
+      "curator_comments": "{count, plural, one {Un curador te dejó un comentario} other {Un curador te dejó # comentarios}}"
+    },
+    "reviewing": {
+      "title": "Revisando la colección",
+      "description": "Una revisión automática está comprobando tu colección. En unos 5 minutos sabrás si está lista para un curador o si necesita cambios."
+    },
+    "attempts": "Revisiones automáticas: {used} de {max} usadas hoy",
+    "attempts_tooltip": "Puedes hacer hasta {max} revisiones automáticas por día. Cuando llegues al límite, puedes pedir la revisión de un curador o esperar al día siguiente (00:00 UTC) para intentarlo de nuevo.",
+    "attempts_info": "Cómo funciona el límite diario",
+    "issues": {
+      "title": "Algunos ítems necesitan tu atención",
+      "intro": "Encontramos algunos problemas que hay que resolver antes de que tu colección pase a un curador. Corrígelos y revisa de nuevo, o pide una revisión de un curador si crees que se marcaron por error.",
+      "request": "Pedir revisión de un curador",
+      "back": "Volver a la colección",
+      "see": "Ver comentarios"
+    },
+    "request": {
+      "title": "¿Pedir una revisión de un curador?",
+      "description": "Si crees que los problemas detectados no son correctos, puedes pedir una revisión a un curador de Decentraland. Las revisiones de curadores llevan más tiempo. Te avisaremos cuando la revisión termine.",
+      "cancel": "Cancelar",
+      "confirm": "Pedir revisión",
+      "note": "Mensaje para el curador (opcional)",
+      "note_placeholder": "Cuenta por qué crees que los problemas no aplican"
+    },
+    "sent": {
+      "title": "¡Colección enviada a revisión!",
+      "description": "Tu colección se envió a un curador de Decentraland para su revisión. Las revisiones de curadores llevan más tiempo. Te avisaremos cuando termine, tanto si tu colección se aprueba como si necesita cambios."
+    },
+    "limit": {
+      "title": "Alcanzaste el límite diario de revisiones automáticas",
+      "description": "Alcanzaste el límite de {max} revisiones automáticas por día. Puedes pedir una revisión manual a un curador de Decentraland, que puede tardar un poco más, o intentarlo de nuevo en {time}, cuando se reinicien tus revisiones.",
+      "description_wait": "Alcanzaste el límite de {max} revisiones automáticas por día. Vuelve a intentarlo en {time}, cuando se reinicien tus revisiones.",
+      "reset_hours": "{count, plural, one {# hora} other {# horas}}",
+      "reset_minutes": "{count, plural, one {# minuto} other {# minutos}}",
+      "not_now": "Ahora no",
+      "request": "Pedir revisión de un curador"
+    },
+    "additional": {
+      "title": "Tu colección necesita una revisión adicional",
+      "description": "Parte del contenido de tu colección requiere una mirada más detallada. La enviamos a un curador de Decentraland para su revisión. Las revisiones de curadores llevan más tiempo. Te avisaremos cuando se apruebe o si hace falta algún cambio."
+    },
+    "validate_again": "Revisar de nuevo",
+    "no_changes": "No hay cambios desde la última revisión automática. Actualiza tus ítems para revisar de nuevo.",
+    "request_review": "Pedir revisión de un curador",
+    "running": "Ya hay una revisión en curso. Inténtalo cuando termine.",
+    "nothing_to_validate": "No hay nada nuevo para revisar automáticamente. Edita un ítem y publica tus cambios, o pide una revisión de un curador.",
+    "busy": "La colección se está actualizando. Inténtalo de nuevo en un momento.",
+    "appeal_open": "Ya se pidió una revisión de un curador para esta colección.",
+    "appeal_error": "No pudimos enviar tu solicitud. Inténtalo de nuevo.",
+    "validation_started": "Revisión automática iniciada. Actualizaremos esta página cuando termine.",
+    "validation_error": "No pudimos iniciar la revisión automática. Inténtalo de nuevo.",
+    "view_comments": "{count, plural, one {Ver comentario} other {Ver comentarios}}",
+    "curator_replied": "Comentario del curador"
+  },
+  "review_stage_hint": {
+    "rejected_by_validator": "Cambios pedidos por la revisión automática.",
+    "rejected_by_curator": "Cambios pedidos por un curador."
+  },
+  "reject_reason": {
+    "clipping": "Problemas de clipping",
+    "thumbnail": "Problemas con la miniatura",
+    "category_hides": "Categoría u ocultamiento incorrectos",
+    "rigging": "Problema de rigging o skin weights",
+    "triangle_count": "Límite de triángulos superado",
+    "emote": "Problemas del emote",
+    "file_size": "Tamaño de archivo superado",
+    "textures_materials": "Límites de texturas o materiales superados",
+    "reversed_faces": "Problemas de caras u orden de dibujado",
+    "smart_wearable_files": "Archivos de smart wearable no válidos",
+    "content_policy_ip": "Problemas de política de contenido",
+    "other": "Otro"
+  },
+  "findings": {
+    "measured": "Medido: {measured}",
+    "limit": "Límite: {limit}",
+    "fix": "Cómo arreglarlo",
+    "docs": "Más información",
+    "severity": {
+      "error": "Error",
+      "warning": "Advertencia"
+    },
+    "item_passed": "Aprobado",
+    "item_failed": "Rechazado",
+    "item_unchecked": "Sin revisar",
+    "unknown_item": "Ítem {id}",
+    "visual_summary": "Revisión visual",
+    "item_unsupported": "No se puede revisar automáticamente",
+    "item_error": "La revisión automática no pudo comprobarlo: {error}",
+    "body_shape": {
+      "male": "Masculino",
+      "female": "Femenino"
+    }
+  },
+  "reject_curation_modal": {
+    "title": "Pedir cambios",
+    "heading": "Selecciona los motivos",
+    "reasons": "Motivos",
+    "reasons_placeholder": "Selecciona uno o más motivos",
+    "reasons_selected": "{count} seleccionados",
+    "remove_reason": "Quitar {reason}",
+    "message": "Detalles (opcional)",
+    "message_placeholder": "Dile al creador qué debe corregir. Lo verá, así que sé específico.",
+    "cancel": "Cancelar",
+    "confirm": "Pedir cambios",
+    "error": "No pudimos enviar el pedido. Inténtalo de nuevo.",
+    "success": "Se pidieron cambios en {collection}"
+  },
+  "automated_verdict": {
+    "title": "Revisión automática",
+    "banner_passed": "Aprobada",
+    "banner_issues": "Problemas en {failed} de {total, plural, one {# ítem} other {# ítems}}",
+    "unchecked_group": "Sin revisar ({count})",
+    "passed_group": "Aprobados ({count})",
+    "errors": "{count, plural, one {# error} other {# errores}}",
+    "warnings": "{count, plural, one {# advertencia} other {# advertencias}}",
+    "measured_of_limit": "{measured} / límite {limit}",
+    "button_passed": "La revisión automática aprobó la colección. Haz clic para ver los detalles.",
+    "button": "Revisión automática",
+    "status_passed": "La revisión automática aprobó la colección",
+    "status_rejected": "La revisión automática encontró problemas",
+    "status_unsupported": "Algunos ítems no se pueden revisar automáticamente",
+    "reason_requested": "El creador pidió la revisión de un curador",
+    "button_unsupported": "Algunos ítems no se pueden revisar automáticamente. Haz clic para ver los detalles.",
+    "button_running": "Revisión automática en curso…",
+    "button_rejected": "La revisión automática encontró problemas. Haz clic para ver los detalles."
+  },
+  "activity_modal": {
+    "title": "Actividad",
+    "empty": "Todavía no hay actividad registrada.",
+    "unavailable": "Esta colección todavía no tiene línea de actividad.",
+    "error": "No pudimos cargar la actividad de esta colección.",
+    "retry": "Intentar de nuevo",
+    "load_more": "Cargar más",
+    "actor": {
+      "system": "Sistema"
+    },
+    "trigger": {
+      "publish": "al publicar",
+      "retry": "pedida por el creador",
+      "changes": "tras los cambios",
+      "sweep": "reenviada automáticamente"
+    },
+    "event": {
+      "collection.published": "publicó la colección",
+      "review.human_required": "Enviada al comité de curaduría (colección de terceros)",
+      "review.human_required_unsupported": "Algunos ítems no se pueden revisar automáticamente, un curador los revisará",
+      "review.automated_started": "Revisión automática iniciada ({trigger})",
+      "review.automated_passed": "La revisión automática pasó",
+      "review.automated_rejected": "La revisión automática encontró problemas en {count, plural, one {# ítem} other {# ítems}}",
+      "review.automated_error": "Revisión automática reiniciada",
+      "review.automated_error_curator": "La revisión automática falló y se reintentará",
+      "review.appeal_requested": "pidió una revisión humana",
+      "review.assigned": "asignó la revisión a {assignee}",
+      "review.unassigned": "quitó la asignación de la revisión",
+      "review.approved": "aprobó la colección",
+      "review.rejected": "pidió cambios",
+      "changes.submitted": "envió cambios en {count, plural, one {# ítem} other {# ítems}}",
+      "collection.disabled": "deshabilitó la colección",
+      "unknown": "{type}",
+      "review": {
+        "automated_error_final": "No se pudo hacer la revisión automática de esta colección, la revisará un curador"
+      },
+      "review.comment": "comentó"
+    },
+    "show_findings": "Ver hallazgos",
+    "hide_findings": "Ocultar hallazgos",
+    "comment": {
+      "label_creator": "Escribe a los curadores",
+      "label_curator": "Escribe al creador",
+      "placeholder_creator": "Haz una pregunta, cuenta qué cambiaste o responde el comentario de un curador",
+      "placeholder_curator": "Haz una pregunta o dile al creador qué revisar",
+      "send": "Enviar",
+      "error": "No pudimos enviar tu mensaje. Inténtalo de nuevo."
     }
   },
   "wallet_error": {

@@ -14,9 +14,10 @@ import { PaymentStep } from './PaymentStep'
 import { PublishErrorModal } from './PublishErrorModal'
 import { TopUpOutcome } from './TopUpOutcome'
 import { ValidationGate } from './ValidationGate'
-import { type ItemCheck } from './ValidationIssuesView'
+import { type ItemCheck } from '~/lib/validation'
 import { StepIndicator } from '~/components/StepIndicator'
-import * as S from './PublishCollectionModal.styles'
+import styles from './PublishCollectionModal.module.css'
+import shared from '~/styles/shared.module.css'
 
 enum Step {
   Name = 1,
@@ -138,13 +139,13 @@ export function PublishCollectionModal({
       closeDisabled={busy}
       testId="publish-collection-modal"
     >
-      <S.Main>
+      <div className={styles.main}>
         <StepIndicator current={step} total={TOTAL_STEPS} testId="publish-steps" />
         {step === Step.Name &&
           (profile.isLoading ? (
-            <S.InlineNote data-testid="publish-name-loading">
-              <S.Spinner aria-hidden />
-            </S.InlineNote>
+            <p className={styles.inlineNote} data-testid="publish-name-loading">
+              <span className={shared.spinner} aria-hidden />
+            </p>
           ) : (
             <ConfirmNameStep
               initialName={collection.name}
@@ -158,9 +159,9 @@ export function PublishCollectionModal({
           ))}
         {step === Step.Items &&
           (itemsQuery.isLoading ? (
-            <S.InlineNote data-testid="publish-items-loading">
-              <S.Spinner aria-hidden />
-            </S.InlineNote>
+            <p className={styles.inlineNote} data-testid="publish-items-loading">
+              <span className={shared.spinner} aria-hidden />
+            </p>
           ) : (
             <ConfirmItemsStep
               address={address}
@@ -188,7 +189,7 @@ export function PublishCollectionModal({
             onFailed={setError}
           />
         )}
-      </S.Main>
+      </div>
       {settlingOrder && <TopUpOutcome address={address} orderId={settlingOrder} onDone={settleOrder} />}
     </Modal>
   )

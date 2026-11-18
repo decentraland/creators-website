@@ -1,32 +1,5 @@
-// Collection domain model + wire mapping for builder-server, ported from the legacy builder
-// (src/modules/collection + lib/api/builder.ts) so both apps read the same API identically.
+// Collection domain model, ported from the legacy builder (src/modules/collection).
 import type { CurationRequestStatus } from '~/lib/curation'
-
-export type RemoteCollection = {
-  id: string
-  name: string
-  eth_address: string
-  salt: string | null
-  contract_address: string | null
-  urn: string
-  is_published: boolean
-  is_approved: boolean
-  minters: string[]
-  managers: string[]
-  forum_link: string | null
-  lock: string | null
-  reviewed_at: string | null
-  created_at: string
-  updated_at: string
-  item_count?: string
-  linked_contract_address: string | null
-  linked_contract_network: string | null
-  is_mapping_complete: boolean
-  is_programmatic?: boolean
-  /** Only in `/:address/collections` lists. */
-  curation_status?: CurationStatus | null
-  last_activity_at?: string
-}
 
 export type Collection = {
   id: string
@@ -148,34 +121,6 @@ export type PaginatedResource<T> = { results: T[] } & PaginationStats
 /** Paginated `/:address/collections` lists also count the collections in each status, search included. */
 export type CollectionsList = PaginatedResource<Collection> & { counts?: CollectionStatusCounts }
 
-export function fromRemoteCollection(remote: RemoteCollection): Collection {
-  const collection: Collection = {
-    id: remote.id,
-    name: remote.name,
-    owner: remote.eth_address,
-    urn: remote.urn,
-    isPublished: remote.is_published,
-    isApproved: remote.is_approved,
-    itemCount: Number(remote.item_count ?? 0),
-    minters: remote.minters || [],
-    managers: remote.managers || [],
-    forumLink: toSafeLink(remote.forum_link),
-    lock: remote.lock ? +new Date(remote.lock) : undefined,
-    reviewedAt: remote.reviewed_at ? +new Date(remote.reviewed_at) : undefined,
-    linkedContractAddress: remote.linked_contract_address || undefined,
-    linkedContractNetwork: remote.linked_contract_network || undefined,
-    createdAt: +new Date(remote.created_at),
-    updatedAt: +new Date(remote.updated_at),
-    isMappingComplete: remote.is_mapping_complete,
-    isProgrammatic: remote.is_programmatic,
-    curationStatus: remote.curation_status,
-    lastActivityAt: remote.last_activity_at ? +new Date(remote.last_activity_at) : undefined
-  }
-  if (remote.salt) collection.salt = remote.salt
-  if (remote.contract_address) collection.contractAddress = remote.contract_address
-  return collection
-}
-
 const CONTRACT_ADDRESS = /^0x[0-9a-fA-F]{40}$/
 
 export function isContractAddress(value: string): boolean {
@@ -187,22 +132,6 @@ export function findCollectionByContract(collections: Collection[], contractAddr
   if (!isContractAddress(contractAddress)) return undefined
   const wanted = contractAddress.toLowerCase()
   return collections.find(collection => collection.contractAddress?.toLowerCase() === wanted)
-}
-
-// Snake_case query params, falsy values dropped — matches the legacy builder's serializer, so
-// builder-server receives byte-identical requests.
-export function toCollectionsQueryString(params: FetchCollectionsParams): string {
-  const query = new URLSearchParams()
-  if (params.isPublished !== undefined) query.append('is_published', String(params.isPublished))
-  if (params.status) query.append('status', params.status)
-  if (params.type) query.append('type', params.type)
-  if (params.sort) query.append('sort', params.sort)
-  if (params.q) query.append('q', params.q)
-  if (params.contractAddress) query.append('contract_address', params.contractAddress)
-  if (params.page) query.append('page', String(params.page))
-  if (params.limit) query.append('limit', String(params.limit))
-  const s = query.toString()
-  return s ? `?${s}` : ''
 }
 
 /** The Linked chip: a type filter beside the status chips, sharing their `status` URL param. */
@@ -327,29 +256,6 @@ export function isCollectionLocked(collection: Collection, now = Date.now()): bo
   if (!collection.lock || collection.isPublished) return false
   const DAY = 24 * 60 * 60 * 1000
   return collection.lock + DAY > now
-}
-
-// The PUT payload shape, mirroring the legacy toRemoteCollection: is_published/is_approved are
-// forced false because the server rejects attempts to change them through an upsert.
-export function toRemoteCollection(
-  collection: Collection
-): Omit<RemoteCollection, 'created_at' | 'updated_at' | 'lock' | 'is_mapping_complete'> {
-  return {
-    id: collection.id,
-    name: collection.name,
-    eth_address: collection.owner,
-    salt: collection.salt || null,
-    contract_address: collection.contractAddress || null,
-    urn: collection.urn,
-    is_published: false,
-    is_approved: false,
-    linked_contract_address: collection.linkedContractAddress || null,
-    linked_contract_network: collection.linkedContractNetwork || null,
-    minters: collection.minters,
-    managers: collection.managers,
-    forum_link: collection.forumLink || null,
-    reviewed_at: collection.reviewedAt ? new Date(collection.reviewedAt).toISOString() : null
-  }
 }
 
 /** Whether this address is the owner, a collaborator or a minter of the collection. */

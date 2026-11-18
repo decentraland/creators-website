@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { BodyShape, type ContractNetwork } from '@dcl/schemas'
 import { ArrowBackIosNewIcon, PersonOutlineIcon } from '~/components/Icons'
@@ -23,6 +23,8 @@ import {
 } from '~/hooks/useCollection'
 import { useCommittee } from '~/hooks/useCommittee'
 import { useCollectionCuration } from '~/hooks/useCuration'
+import { useFeatureFlag } from '~/hooks/useFeatureFlag'
+import { FeatureFlag } from '~/lib/featureFlags'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { track } from '~/lib/analytics'
 import { modelValidationKey, useModelValidation } from '~/hooks/useModelValidation'
@@ -46,7 +48,9 @@ import {
   type Collection
 } from '~/lib/collections'
 import { parseUuidParam } from '~/lib/ids'
-import { getCurationState, curationListUrl } from '~/lib/curation'
+import { ReviewStage, getCurationState, getReviewStage, curationListUrl } from '~/lib/curation'
+import { useCollectionEvents } from '~/hooks/useCollectionEvents'
+import { getAutomatedIssuesByItem } from '~/lib/events'
 import { toFileChangeSaveable, toPreviewItem, toSaveableItem, type ItemFileChange } from '~/lib/itemDraft'
 import { getEditorMode, pickDressedItems, resolveSelectedItem } from '~/lib/itemEditor'
 import { pickFiles } from '~/lib/filePicker'
@@ -72,7 +76,7 @@ import {
 } from '~/lib/springBones'
 import { selectAvatarAttributes, useAvatarPreview } from '~/store/avatarPreview'
 import { useWallet } from '~/store/wallet'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { AvatarCustomizerDrawer, AvatarCustomizerToggle } from './AvatarCustomizer'
 import { CollectionPicker } from './CollectionPicker'
 import { ItemsSidebar, type EditorBack } from './ItemsSidebar'
@@ -87,7 +91,7 @@ import { ValidationBadge } from '~/components/ValidationBadge'
 import { getValidationStatus, itemValidationContext, type ValidationSource } from '~/lib/validation'
 import { useEditorLayout } from './useEditorLayout'
 import { useItemForm } from './useItemForm'
-import * as S from './ItemEditorPage.styles'
+import styles from './ItemEditorPage.module.css'
 import { type WearablePreviewController } from '~/components/WearablePreview'
 
 const PREVIEW_ID = 'item-editor-preview'
@@ -122,7 +126,7 @@ const ItemEditorPage = () => {
   // Until the committee answers, a review link can't tell a curator from someone with no access.
   const isResolvingReviewer = searchParams.get('reviewing') === 'true' && !!address && committee.isLoading
   const showToast = useNotifications(state => state.showToast)
-  const isMobile = useMediaQuery(theme.media.maxWidth('mobile'))
+  const isMobile = useMediaQuery(media.maxWidth('mobile'))
 
   const collectionQuery = useCollection(address, collectionId ?? undefined)
   // Linked collections belong to a third party: its managers, not the collection's roles, may edit them.
@@ -154,7 +158,27 @@ const ItemEditorPage = () => {
   const collection = collectionQuery.data
   // Linked collections have no owner: their third party's managers are who works on them.
   const hasRole = !!collection && (isLinked ? isManager : hasCollectionRole(collection, address))
-  const mobileCuration = useCollectionCuration(mode === 'review' ? address : undefined, collection)
+  // The automated review locks the items it judges and dresses them with its findings.
+  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION_REVIEW_FLOW).enabled
+  const reviewCuration = useCollectionCuration(
+    mode === 'review' || (canReadCuration && autoCuration) ? address : undefined,
+    collection
+  )
+  const { events: reviewEvents } = useCollectionEvents(canReadCuration ? address : undefined, collection)
+  const reviewStage = useMemo(
+    () => (collection ? getReviewStage(collection, reviewCuration.data ?? null, reviewEvents) : null),
+    [collection, reviewCuration.data, reviewEvents]
+  )
+  const reviewLocked = reviewStage === ReviewStage.AUTOMATED_REVIEWING
+  const curatorRequest = useMemo(() => {
+    const request = reviewCuration.data
+    if (mode === 'review' || reviewStage !== ReviewStage.REJECTED_BY_CURATOR || !request) return undefined
+    return { reasons: request.rejectionReasons ?? [], message: request.rejectionMessage }
+  }, [mode, reviewStage, reviewCuration.data])
+  const automatedIssues = useMemo(
+    () => getAutomatedIssuesByItem(reviewEvents ?? [], itemsQuery.data ?? EMPTY_ITEMS),
+    [reviewEvents, itemsQuery.data]
+  )
   const items = itemsQuery.data ?? EMPTY_ITEMS
   // A linked collection under review: the sidebar sets apart the items this review is about.
   const pendingLinked = usePendingLinkedItems(address, mode === 'review' && isLinked ? collection : undefined)
@@ -256,13 +280,11 @@ const ItemEditorPage = () => {
       thumbnail: storedThumbnail ? getContentsStorageUrl(storedThumbnail) : null
     }
   }, [previewSelected])
-  const validationIssues = useMemo(
-    () =>
-      validation.data || thumbnailValidation.data
-        ? [...(validation.data?.issues ?? []), ...(thumbnailValidation.data?.issues ?? [])]
-        : undefined,
-    [validation.data, thumbnailValidation.data]
-  )
+  const validationIssues = useMemo(() => {
+    const automated = selectedId ? automatedIssues.get(selectedId) : undefined
+    if (!validation.data && !thumbnailValidation.data && !automated) return undefined
+    return [...(validation.data?.issues ?? []), ...(thumbnailValidation.data?.issues ?? []), ...(automated ?? [])]
+  }, [validation.data, thumbnailValidation.data, automatedIssues, selectedId])
   const validationStatus = useMemo(
     () => getValidationStatus(validationIssues, validation.isLoading || thumbnailValidation.isLoading),
     [validationIssues, validation.isLoading, thumbnailValidation.isLoading]
@@ -391,6 +413,7 @@ const ItemEditorPage = () => {
     !!collection &&
     !!selected &&
     !!address &&
+    !reviewLocked &&
     (isLinked ? isManager && !isCollectionLocked(collection) : canEditItemDetails(collection, selected, address))
   const canDelete =
     editable &&
@@ -650,38 +673,38 @@ const ItemEditorPage = () => {
 
   if (restored && !session) {
     return (
-      <S.Workspace data-testid="item-editor-page">
-        <S.StatePanel data-testid="sign-in-panel">
+      <div className={styles.workspace} data-testid="item-editor-page">
+        <section className={styles.statePanel} data-testid="sign-in-panel">
           <PersonOutlineIcon />
-          <S.StateTitle>{t('collection_detail_page.sign_in.title')}</S.StateTitle>
+          <h2 className={styles.stateTitle}>{t('collection_detail_page.sign_in.title')}</h2>
           <Button type="button" variant="primary" data-testid="sign-in" onClick={() => signIn()}>
             {t('collection_detail_page.sign_in.action')}
           </Button>
-        </S.StatePanel>
-      </S.Workspace>
+        </section>
+      </div>
     )
   }
 
   if (isNotFound) {
     return (
-      <S.Workspace data-testid="item-editor-page">
-        <S.StatePanel data-testid="collection-not-found">
-          <S.StateTitle>{t('collection_detail_page.not_found.title')}</S.StateTitle>
-          <S.StateText>{t('collection_detail_page.not_found.description')}</S.StateText>
+      <div className={styles.workspace} data-testid="item-editor-page">
+        <section className={styles.statePanel} data-testid="collection-not-found">
+          <h2 className={styles.stateTitle}>{t('collection_detail_page.not_found.title')}</h2>
+          <p className={styles.stateText}>{t('collection_detail_page.not_found.description')}</p>
           <Button type="button" variant="secondary" onClick={() => navigate('/collections')}>
             {t('collection_detail_page.not_found.back')}
           </Button>
-        </S.StatePanel>
-      </S.Workspace>
+        </section>
+      </div>
     )
   }
 
   if (isError) {
     return (
-      <S.Workspace data-testid="item-editor-page">
-        <S.StatePanel data-testid="item-editor-error">
-          <S.StateTitle>{t('collection_detail_page.error.title')}</S.StateTitle>
-          <S.StateText>{t('collection_detail_page.error.description')}</S.StateText>
+      <div className={styles.workspace} data-testid="item-editor-page">
+        <section className={styles.statePanel} data-testid="item-editor-error">
+          <h2 className={styles.stateTitle}>{t('collection_detail_page.error.title')}</h2>
+          <p className={styles.stateText}>{t('collection_detail_page.error.description')}</p>
           <Button
             type="button"
             variant="secondary"
@@ -692,18 +715,18 @@ const ItemEditorPage = () => {
           >
             {t('collection_detail_page.error.retry')}
           </Button>
-        </S.StatePanel>
-      </S.Workspace>
+        </section>
+      </div>
     )
   }
 
   if (isLoading || !address) {
     return (
-      <S.Workspace data-testid="item-editor-page" aria-busy="true">
-        <S.PreviewEmpty data-testid="item-editor-loading">
+      <div className={styles.workspace} data-testid="item-editor-page" aria-busy="true">
+        <div className={styles.previewEmpty} data-testid="item-editor-loading">
           <span className="spinner" aria-hidden />
-        </S.PreviewEmpty>
-      </S.Workspace>
+        </div>
+      </div>
     )
   }
 
@@ -739,7 +762,10 @@ const ItemEditorPage = () => {
         address={address}
         editable={editable}
         showReadOnlyNote={mode !== 'review'}
-        readOnlyReason={isCollectionLocked(collection) ? 'lock' : isLinked ? 'linked' : 'role'}
+        curatorRequest={curatorRequest}
+        readOnlyReason={
+          isCollectionLocked(collection) ? 'lock' : reviewLocked ? 'reviewing' : isLinked ? 'linked' : 'role'
+        }
         canDelete={canDelete}
         canDownload={canManageCollectionItems(collection, address) || isManager || isCurator}
         draft={form.draft}
@@ -775,9 +801,10 @@ const ItemEditorPage = () => {
   }
   // Phones get no sidebar and no review bar, so this strip is the only way back out of the editor.
   const mobileHeader = collection ? (
-    <S.MobileEditorHeader data-testid="mobile-editor-header">
+    <div className={styles.mobileEditorHeader} data-testid="mobile-editor-header">
       {mobileBack && (
-        <S.MobileBackLink
+        <Link
+          className={styles.mobileBackLink}
           to={mobileBack.to}
           aria-label={mobileBack.label}
           data-testid="mobile-editor-back"
@@ -786,18 +813,18 @@ const ItemEditorPage = () => {
           }}
         >
           <ArrowBackIosNewIcon fontSize="small" />
-        </S.MobileBackLink>
+        </Link>
       )}
-      <S.MobileCollectionName title={collection.name} data-testid="mobile-editor-collection">
+      <h1 className={styles.mobileCollectionName} title={collection.name} data-testid="mobile-editor-collection">
         {collection.name}
-      </S.MobileCollectionName>
+      </h1>
       {mode === 'review'
-        ? !mobileCuration.isLoading &&
-          !mobileCuration.isError && (
-            <CurationStatePill state={getCurationState(collection, mobileCuration.data ?? null)} />
+        ? !reviewCuration.isLoading &&
+          !reviewCuration.isError && (
+            <CurationStatePill state={getCurationState(collection, reviewCuration.data ?? null)} />
           )
         : collectionStatus && <CollectionStatusPill collection={collection} status={collectionStatus} />}
-    </S.MobileEditorHeader>
+    </div>
   ) : null
 
   if (isMobile) {
@@ -816,7 +843,7 @@ const ItemEditorPage = () => {
           toggleDressed({ id: item.id, type: item.type, category: item.data.category })
         }}
       >
-        {collection ? preview : <S.PreviewEmpty>{t('item_editor.pick_collection')}</S.PreviewEmpty>}
+        {collection ? preview : <div className={styles.previewEmpty}>{t('item_editor.pick_collection')}</div>}
         {collection && isCustomizerOpen && (
           <AvatarCustomizerDrawer catalog={baseWearables.data} onClose={closeCustomizer} />
         )}
@@ -858,10 +885,10 @@ const ItemEditorPage = () => {
   )
 
   return (
-    <S.Workspace data-testid="item-editor-page" data-mode={mode}>
+    <div className={styles.workspace} data-testid="item-editor-page" data-mode={mode}>
       {reviewBar}
-      <S.Columns>
-        {collection ? sidebar : <S.PickerColumn>{sidebar}</S.PickerColumn>}
+      <div className={styles.columns}>
+        {collection ? sidebar : <div className={styles.pickerColumn}>{sidebar}</div>}
         <PanelGroup
           direction="horizontal"
           autoSaveId="item-editor"
@@ -869,26 +896,28 @@ const ItemEditorPage = () => {
           style={{ flex: 1, minWidth: 0 }}
         >
           <Panel id="editor-center" minSize={CENTER_MIN_PCT} order={2}>
-            <S.CenterPanel data-testid="editor-center">
+            <div className={styles.centerPanel} data-testid="editor-center">
               {collection ? (
                 <>
-                  <S.PreviewArea>
+                  <div className={styles.previewArea}>
                     {preview}
                     {loadCount > 0 && controller && <ZoomControls controller={controller} />}
-                  </S.PreviewArea>
+                  </div>
                   {isCustomizerOpen && (
                     <AvatarCustomizerDrawer catalog={baseWearables.data} onClose={closeCustomizer} />
                   )}
                 </>
               ) : (
-                <S.PreviewEmpty data-testid="editor-center-empty">{t('item_editor.pick_collection')}</S.PreviewEmpty>
+                <div className={styles.previewEmpty} data-testid="editor-center-empty">
+                  {t('item_editor.pick_collection')}
+                </div>
               )}
-            </S.CenterPanel>
+            </div>
           </Panel>
           {collection && selected && (
             <>
               <PanelResizeHandle>
-                <S.Handle data-testid="resize-handle-right" />
+                <div className={styles.handle} data-testid="resize-handle-right" />
               </PanelResizeHandle>
               <Panel id="editor-properties" defaultSize={RIGHT_DEFAULT_PCT} minSize={RIGHT_MIN_PCT} order={3}>
                 {properties}
@@ -896,7 +925,7 @@ const ItemEditorPage = () => {
             </>
           )}
         </PanelGroup>
-      </S.Columns>
+      </div>
 
       {addItemsFiles && collection && (
         <AddItemsModal collection={collection} address={address} files={addItemsFiles} onClose={closeAddItems} />
@@ -955,7 +984,7 @@ const ItemEditorPage = () => {
           testId="spring-bones-warning"
         />
       )}
-    </S.Workspace>
+    </div>
   )
 }
 

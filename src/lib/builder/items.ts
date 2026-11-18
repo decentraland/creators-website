@@ -1,6 +1,8 @@
 import { type BlockchainRarity } from '~/lib/rarities'
-import { VIDEO_PATH, fromRemoteItem, toRemoteItem, tracksVideoOnSave, type Item, type RemoteItem } from '~/lib/items'
+import { VIDEO_PATH, tracksVideoOnSave, type Item } from '~/lib/items'
+import { fromRemoteItem, toRemoteItem } from './mappers'
 import { request } from './transport'
+import type { RemoteItem } from './wire'
 
 /** One item as builder-server holds it right now: GET /items/{id}. */
 export async function fetchItem(address: string, itemId: string): Promise<Item> {

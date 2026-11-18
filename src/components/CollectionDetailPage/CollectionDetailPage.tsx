@@ -10,9 +10,10 @@ import {
   useCollectionStatus,
   useSaveCollection
 } from '~/hooks/useCollection'
-import { BuilderServerError } from '~/lib/builder'
+import { BuilderServerError, ValidationLimitError, isCollectionBusy, isValidationRunning } from '~/lib/builder'
 import { isSocialLogin } from '~/lib/auth'
 import { FeatureFlag } from '~/lib/featureFlags'
+import { getValidationStatus } from '~/lib/validation'
 import {
   CollectionDisplayStatus,
   canManageCollectionItems,
@@ -61,18 +62,34 @@ import {
 import { useFeatureFlag } from '~/hooks/useFeatureFlag'
 import { useMediaQuery } from '~/hooks/useMediaQuery'
 import { useItemSyncs } from '~/hooks/useItemSync'
-import { useCollectionValidation, useRerunItemValidation } from '~/hooks/useCollectionValidation'
-import { ItemSyncStatus, getItemRowStatus, hasPendingChanges, showsItemStatusColumn } from '~/lib/itemSync'
-import { canPushChanges } from '~/lib/curation'
+import { useCollectionValidation, useRerunItemValidation, type ItemValidation } from '~/hooks/useCollectionValidation'
+import {
+  ItemSyncStatus,
+  getItemRowStatus,
+  hasPendingChanges,
+  hasUpdatesSinceRejection,
+  showsItemStatusColumn
+} from '~/lib/itemSync'
+import { ReviewStage, canPushChanges, getReviewStage, hasReviewConversation, isRejectedStage } from '~/lib/curation'
 import { useCommittee } from '~/hooks/useCommittee'
 import { useCollectionCuration, usePushCuration } from '~/hooks/useCuration'
+import { useCollectionEvents } from '~/hooks/useCollectionEvents'
+import {
+  NOTE_MAX_LENGTH,
+  VALIDATION_ATTEMPTS_PER_DAY,
+  getAutomatedIssuesByItem,
+  countValidationAttempts,
+  hasChangesSinceVerdict,
+  startOfUtcDay
+} from '~/lib/events'
 import { pageRangeLabel } from '~/lib/pagination'
 import { ITEM_EXTENSIONS, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { type ItemListing } from '~/lib/listings'
 import { useNotifications } from '~/lib/notifications'
-import { theme } from '~/styles/theme'
+import { media } from '~/styles/theme'
 import { Button } from '~/components/Button'
 import { ConfirmModal } from '~/components/ConfirmModal'
+import { NoteField } from '~/components/NoteField'
 import { Tooltip } from '~/components/Tooltip'
 import {
   EmoteIcon,
@@ -97,6 +114,7 @@ import { useThirdParty } from '~/hooks/useLinkedCollection'
 import { getThirdPartyId, isThirdPartyManager } from '~/lib/thirdParty'
 import { AddItemsModal } from './AddItemsModal'
 import { LinkedCollectionView } from './LinkedCollectionView'
+import { ReviewFlow, type ReviewFlowRequest } from './ReviewFlow'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import { ItemListRow } from './ItemListRow'
 import { PublishCollectionModal, PublishSuccessModal, type PublishResume } from './PublishCollectionModal'
@@ -106,7 +124,10 @@ import { ManageRolesFlow } from './ManageRolesFlow'
 import { TransferOwnershipFlow } from './TransferOwnershipFlow'
 import { SendItemsFlow } from './SendItemsFlow'
 import { CollectionDiscounts, DiscountFlow, EndDiscountFlow } from './DiscountFlow'
-import * as S from './CollectionDetailPage.styles'
+import { cx } from '~/lib/cx'
+import styles from './CollectionDetailPage.module.css'
+import row from './ItemListRow/ItemListRow.module.css'
+import shared from '~/styles/shared.module.css'
 
 const NOT_FOUND_STATUSES = [401, 403, 404]
 const NO_ITEMS: Item[] = []
@@ -174,7 +195,7 @@ const CollectionDetailPage = () => {
     await updateItem.mutateAsync({ item, thumbnail: patch.contents[THUMBNAIL_PATH] })
   })
   // Small screens are a viewer: the in-row edit shortcuts are desktop-only, like the menu's edit actions.
-  const compact = useMediaQuery(theme.media.noActions)
+  const compact = useMediaQuery(media.noActions)
 
   const collection = collectionQuery.data
   // Linked collections are read-only here: none of the publishing, sales or sync machinery runs for them.
@@ -208,14 +229,6 @@ const CollectionDetailPage = () => {
   const withMarket = !!standardCollection?.isPublished && hasRole
   const status = useCollectionStatus(curationAddress, standardCollection)
   const showForumPost = !!standardCollection && isForumPostRelevant(standardCollection, status)
-  const statusHint =
-    status === CollectionDisplayStatus.REJECTED
-      ? t('collection_detail_page.review_notice.rejected')
-      : status === CollectionDisplayStatus.UNDER_REVIEW
-        ? t('collection_status.under_review_hint')
-        : status === CollectionDisplayStatus.DISABLED
-          ? t('collection_status.disabled_hint')
-          : null
   // Sales here are off-chain public orders only: with the flag off there is no other way to list an item.
   const canListItems = useFeatureFlag(FeatureFlag.OFFCHAIN_PUBLIC_ITEM_ORDERS).enabled
   const isApprovedForSale = canListItems && !!collection && hasBeenApproved(collection)
@@ -290,6 +303,8 @@ const CollectionDetailPage = () => {
   const syncs = useItemSyncs(curationAddress, standardCollection, allItems ?? [])
   const curationQuery = useCollectionCuration(curationAddress, standardCollection)
   const curation = curationQuery.data ?? null
+  const eventsQuery = useCollectionEvents(curationAddress, standardCollection)
+  const { events } = eventsQuery
   const pushCuration = usePushCuration(address)
   // Sending changes for review runs the same item checks as publishing before its confirm modal.
   const [pushView, setPushView] = useState<'closed' | 'gate' | 'confirm'>('closed')
@@ -297,19 +312,64 @@ const CollectionDetailPage = () => {
     () => [...syncs.values()].some(sync => sync.status === ItemSyncStatus.UNSYNCED),
     [syncs]
   )
+  const [pushNote, setPushNote] = useState('')
   const closePush = () => {
     setPushView('closed')
+    setPushNote('')
     pushCuration.reset()
   }
-  // Until the request loads, a pending one looks like none and the push would duplicate it.
+  const stage = useMemo(
+    () => (standardCollection ? getReviewStage(standardCollection, curation, events) : null),
+    [standardCollection, curation, events]
+  )
+  const statusHint =
+    status === CollectionDisplayStatus.REJECTED
+      ? isRejectedStage(stage)
+        ? t(`review_stage_hint.${stage}`)
+        : t('collection_detail_page.review_notice.rejected')
+      : status === CollectionDisplayStatus.UNDER_REVIEW
+        ? t('collection_status.under_review_hint')
+        : status === CollectionDisplayStatus.DISABLED
+          ? t('collection_status.disabled_hint')
+          : null
+  // The validator judges a snapshot: nothing changes under it (Figma: "block edit settings during these 5 mins").
+  const reviewLocked = stage === ReviewStage.AUTOMATED_REVIEWING
+  const autoCuration = useFeatureFlag(FeatureFlag.AUTO_CURATION_REVIEW_FLOW).enabled
+  const [reviewRequest, setReviewRequest] = useState<ReviewFlowRequest | null>(null)
+  // Only a server with the review timeline keeps the note.
+  const withPushNote = autoCuration && events !== null
+  const clearReviewRequest = useCallback(() => setReviewRequest(null), [])
+  // The validator's findings dress the rows and the details modal like the browser's checks do.
+  const automatedIssues = useMemo(() => getAutomatedIssuesByItem(events ?? [], allItems ?? []), [events, allItems])
+  // Until the request loads, a pending one looks like none and the push would duplicate it. An automated
+  // rejection of a first review is never pushed: it is reviewed again or sent to a curator.
   const curationLoaded = curationQuery.isSuccess
   const showPushChanges = useMemo(
     () =>
       !!standardCollection &&
       curationLoaded &&
+      !(stage === ReviewStage.REJECTED_BY_VALIDATOR && !standardCollection.isApproved) &&
       canPushChanges(standardCollection, curation, hasUnsyncedItems, canManage),
-    [standardCollection, curationLoaded, curation, hasUnsyncedItems, canManage]
+    [standardCollection, curationLoaded, stage, curation, hasUnsyncedItems, canManage]
   )
+  // An approval ends the conversation for both sides, as the server does.
+  const commentAs = !hasReviewConversation(curation)
+    ? undefined
+    : canManage
+      ? ('creator' as const)
+      : committee.isCurator
+        ? ('curator' as const)
+        : undefined
+  const showReviewAgain = canManage && curationLoaded && stage === ReviewStage.REJECTED_BY_VALIDATOR
+  // After a curator's request for fixes, reading the feedback is the main action until an item is updated.
+  const awaitsFixes = useMemo(
+    () => stage === ReviewStage.REJECTED_BY_CURATOR && !hasUpdatesSinceRejection(curation, allItems ?? []),
+    [stage, curation, allItems]
+  )
+  // The same content always gets the same result, so another automated review waits for a saved or added item.
+  const hasNewContent = useMemo(() => hasChangesSinceVerdict(events ?? [], allItems ?? []), [events, allItems])
+  const today = startOfUtcDay(Date.now())
+  const reviewsUsed = useMemo(() => countValidationAttempts(events ?? [], today), [events, today])
   // After a rejection the creator asks for a review again, whether it was the first one or a pushed update.
   const pushCopy = curation?.status === 'rejected' ? 'request_review' : 'push_changes'
   const rowStatuses = useMemo(
@@ -334,10 +394,6 @@ const CollectionDetailPage = () => {
   )
   const validation = useCollectionValidation(validationItems, validates)
   const blockOnErrors = useFeatureFlag(FeatureFlag.BLOCK_PUBLISH_ON_VALIDATION_ERRORS).enabled
-  const invalidCount = useMemo(
-    () => [...validation.results.values()].filter(result => result.status === 'errors').length,
-    [validation.results]
-  )
   const publishValidation = useMemo(
     () => ({
       // A background refetch (back from saving in the editor) may bring new hashes the modal must wait for.
@@ -347,17 +403,35 @@ const CollectionDetailPage = () => {
     [itemsQuery.isFetching, validation, validationItems]
   )
   const rerunItemValidation = useRerunItemValidation()
+  const rowValidations = useMemo(() => {
+    const merged = new Map<string, ItemValidation>(validation.results)
+    for (const [itemId, automated] of automatedIssues) {
+      const local = validation.results.get(itemId)
+      const issues = [...(local?.issues ?? []), ...automated]
+      merged.set(itemId, {
+        status: local?.status === 'loading' ? 'loading' : getValidationStatus(issues, false),
+        issues
+      })
+    }
+    return merged
+  }, [validation.results, automatedIssues])
+  // Counted from what the rows show, so the push is blocked by the same errors the rows say block it.
+  const invalidCount = useMemo(
+    () => [...rowValidations.values()].filter(result => result.status === 'errors').length,
+    [rowValidations]
+  )
+  const rowValidation = useCallback((item: Item) => rowValidations.get(item.id), [rowValidations])
   const [validationItem, setValidationItem] = useState<Item | null>(null)
   const showValidation = useCallback(
     (item: Item) => {
       setValidationItem(item)
       track('Item Validation Details Opened', {
         itemId: item.id,
-        status: validation.results.get(item.id)?.status ?? 'idle',
+        status: rowValidation(item)?.status ?? 'idle',
         trigger: 'row'
       })
     },
-    [validation.results]
+    [rowValidation]
   )
 
   const isLoading =
@@ -397,7 +471,7 @@ const CollectionDetailPage = () => {
     collection && !publishInFlight && !retryLanded
       ? getPublishBlocker(collection, total, allItems ?? [], { hasInvalidItems })
       : 'not_draft'
-  const pushBlocked = hasInvalidItems
+  const pushBlocked = hasInvalidItems || reviewLocked
 
   function openFileBrowser() {
     filesInputRef.current?.click()
@@ -470,59 +544,59 @@ const CollectionDetailPage = () => {
   }
 
   return (
-    <S.Page data-testid="collection-detail-page">
+    <div className={styles.page} data-testid="collection-detail-page">
       {restored && !session ? (
-        <S.Panel data-testid="sign-in-panel">
-          <S.SignInIconWrap aria-hidden>
+        <section className={shared.panel} data-testid="sign-in-panel">
+          <div className={styles.signInIconWrap} aria-hidden>
             <PersonOutlineIcon />
-          </S.SignInIconWrap>
-          <S.PanelTitle>{t('collection_detail_page.sign_in.title')}</S.PanelTitle>
+          </div>
+          <h2 className={shared.panelTitle}>{t('collection_detail_page.sign_in.title')}</h2>
           <Button type="button" variant="primary" data-testid="sign-in" onClick={() => signIn()}>
             {t('collection_detail_page.sign_in.action')}
           </Button>
-        </S.Panel>
+        </section>
       ) : isLoading ? (
-        <S.Loading aria-hidden data-testid="collection-detail-loading">
-          <S.Header>
-            <S.HeaderLeft>
-              <S.SkeletonTitle className="skeleton" />
-            </S.HeaderLeft>
-            <S.HeaderActions>
-              <S.SkeletonButton className="skeleton" data-desktop-only />
-              <S.SkeletonButton className="skeleton" data-desktop-only />
-              <S.SkeletonButton className="skeleton" data-icon />
-            </S.HeaderActions>
-          </S.Header>
-          <S.SubHeader>
-            <S.FilterChips>
-              <S.SkeletonChip className="skeleton" />
-              <S.SkeletonChip className="skeleton" />
-              <S.SkeletonChip className="skeleton" />
-            </S.FilterChips>
-            <S.SubActions>
-              <S.SkeletonButton className="skeleton" data-compact />
-              <S.SkeletonButton className="skeleton" data-compact />
-            </S.SubActions>
-          </S.SubHeader>
-          <S.List>
-            <S.SkeletonListHeader className="skeleton" />
+        <div className={styles.loading} aria-hidden data-testid="collection-detail-loading">
+          <div className={styles.header}>
+            <div className={styles.headerLeft}>
+              <div className={cx(styles.skeletonTitle, 'skeleton')} />
+            </div>
+            <div className={styles.headerActions}>
+              <div className={cx(styles.skeletonButton, 'skeleton')} data-desktop-only />
+              <div className={cx(styles.skeletonButton, 'skeleton')} data-desktop-only />
+              <div className={cx(styles.skeletonButton, 'skeleton')} data-icon />
+            </div>
+          </div>
+          <div className={styles.subHeader}>
+            <div className={styles.filterChips}>
+              <div className={cx(styles.skeletonChip, 'skeleton')} />
+              <div className={cx(styles.skeletonChip, 'skeleton')} />
+              <div className={cx(styles.skeletonChip, 'skeleton')} />
+            </div>
+            <div className={styles.subActions}>
+              <div className={cx(styles.skeletonButton, 'skeleton')} data-compact />
+              <div className={cx(styles.skeletonButton, 'skeleton')} data-compact />
+            </div>
+          </div>
+          <div className={styles.list}>
+            <div className={cx(styles.skeletonListHeader, 'skeleton')} />
             {Array.from({ length: 5 }, (_, i) => (
-              <S.SkeletonRow key={i} className="skeleton" />
+              <div className={cx(styles.skeletonRow, 'skeleton')} key={i} />
             ))}
-          </S.List>
-        </S.Loading>
+          </div>
+        </div>
       ) : isNotFound ? (
-        <S.Panel data-testid="collection-not-found">
-          <S.PanelTitle>{t('collection_detail_page.not_found.title')}</S.PanelTitle>
-          <S.PanelText>{t('collection_detail_page.not_found.description')}</S.PanelText>
+        <section className={shared.panel} data-testid="collection-not-found">
+          <h2 className={shared.panelTitle}>{t('collection_detail_page.not_found.title')}</h2>
+          <p className={shared.panelText}>{t('collection_detail_page.not_found.description')}</p>
           <Button type="button" variant="secondary" onClick={() => navigate('/collections')}>
             {t('collection_detail_page.not_found.back')}
           </Button>
-        </S.Panel>
+        </section>
       ) : isError || !collection ? (
-        <S.Panel data-testid="collection-detail-error">
-          <S.PanelTitle>{t('collection_detail_page.error.title')}</S.PanelTitle>
-          <S.PanelText>{t('collection_detail_page.error.description')}</S.PanelText>
+        <section className={shared.panel} data-testid="collection-detail-error">
+          <h2 className={shared.panelTitle}>{t('collection_detail_page.error.title')}</h2>
+          <p className={shared.panelText}>{t('collection_detail_page.error.description')}</p>
           <Button
             type="button"
             variant="secondary"
@@ -534,7 +608,7 @@ const CollectionDetailPage = () => {
           >
             {t('collection_detail_page.error.retry')}
           </Button>
-        </S.Panel>
+        </section>
       ) : isLinked && session ? (
         <LinkedCollectionView
           collection={collection}
@@ -546,9 +620,10 @@ const CollectionDetailPage = () => {
         />
       ) : (
         <>
-          <S.Header>
-            <S.HeaderLeft>
-              <S.BackLink
+          <div className={styles.header}>
+            <div className={styles.headerLeft}>
+              <button
+                className={styles.backLink}
                 type="button"
                 aria-label={t('collection_detail_page.back')}
                 data-testid="back-to-collections"
@@ -560,29 +635,31 @@ const CollectionDetailPage = () => {
                 }
               >
                 <ArrowBackIcon />
-              </S.BackLink>
-              <S.TitleGroup>
-                <S.Title data-testid="collection-name" title={collection.name}>
+              </button>
+              <div className={styles.titleGroup}>
+                <h1 className={styles.title} data-testid="collection-name" title={collection.name}>
                   {collection.name}
-                </S.Title>
+                </h1>
                 {canRename && (
-                  <S.RenameButton
+                  <button
+                    className={styles.renameButton}
                     type="button"
                     aria-label={t('collection_detail_page.rename')}
                     data-testid="rename-collection"
                     onClick={() => setRenameOpen(true)}
                   >
                     <EditIcon fontSize="small" />
-                  </S.RenameButton>
+                  </button>
                 )}
-              </S.TitleGroup>
+              </div>
               {status && <CollectionStatusPill collection={collection} status={status} hint={statusHint} />}
               {address && <CollectionRolePill collection={collection} address={address} />}
-            </S.HeaderLeft>
-            <S.HeaderActions>
+            </div>
+            <div className={styles.headerActions}>
               {validation.isValidating && (
                 <Tooltip content={t('item_validation.checking')} asChild testId="validation-spinner-tooltip">
-                  <S.ValidationSpinner
+                  <span
+                    className={cx(shared.spinner, styles.validationSpinner)}
                     role="status"
                     aria-label={t('item_validation.checking')}
                     tabIndex={0}
@@ -591,7 +668,7 @@ const CollectionDetailPage = () => {
                   />
                 </Tooltip>
               )}
-              {showForumPost && (
+              {showForumPost && !autoCuration && (
                 <Button
                   type="button"
                   variant="dark"
@@ -664,9 +741,11 @@ const CollectionDetailPage = () => {
               {showPushChanges && (
                 <Tooltip
                   content={
-                    pushBlocked
-                      ? t('collection_detail_page.push_blocker.has_invalid_items', { count: invalidCount })
-                      : null
+                    reviewLocked
+                      ? t('collection_detail_page.push_blocker.reviewing')
+                      : pushBlocked
+                        ? t('collection_detail_page.push_blocker.has_invalid_items', { count: invalidCount })
+                        : null
                   }
                   placement="bottom"
                   asChild
@@ -674,7 +753,7 @@ const CollectionDetailPage = () => {
                 >
                   <Button
                     type="button"
-                    variant="primary"
+                    variant={awaitsFixes ? 'dark' : 'primary'}
                     data-desktop-only
                     data-testid="push-changes"
                     aria-disabled={pushBlocked || undefined}
@@ -686,11 +765,43 @@ const CollectionDetailPage = () => {
                   </Button>
                 </Tooltip>
               )}
+              {showReviewAgain && (
+                <Tooltip
+                  content={
+                    hasNewContent
+                      ? t('review_flow.attempts', {
+                          used: Math.min(reviewsUsed, VALIDATION_ATTEMPTS_PER_DAY),
+                          max: VALIDATION_ATTEMPTS_PER_DAY
+                        })
+                      : t('review_flow.no_changes')
+                  }
+                  placement="bottom"
+                  asChild
+                  testId="validate-again-tooltip"
+                >
+                  <Button
+                    type="button"
+                    variant="primary"
+                    data-desktop-only
+                    data-testid="validate-again"
+                    aria-disabled={!hasNewContent || undefined}
+                    onClick={() => {
+                      if (hasNewContent) setReviewRequest('validate')
+                    }}
+                  >
+                    {t('review_flow.validate_again')}
+                  </Button>
+                </Tooltip>
+              )}
               {address && (
                 <CollectionActionsMenu
                   collection={collection}
                   address={address}
                   onPreviewInWorld={hasItems ? () => previewCollectionFromDetail(collection.id, total) : undefined}
+                  items={allItems}
+                  showActivity={autoCuration && !!curationAddress && !!standardCollection?.isPublished}
+                  commentAs={commentAs}
+                  forumInMenu={autoCuration}
                   onSendItems={canSend ? () => setSending(true) : undefined}
                   onCreateDiscount={canCreateDiscount ? () => openDiscount('menu') : undefined}
                   onPreviewItems={() => navigate(`/collections/editor?collection=${collection.id}`)}
@@ -700,8 +811,8 @@ const CollectionDetailPage = () => {
                   onDeleted={() => navigate('/collections', { replace: true })}
                 />
               )}
-            </S.HeaderActions>
-          </S.Header>
+            </div>
+          </div>
           {canManageDiscounts && openDiscounts && (
             <CollectionDiscounts
               discounts={openDiscounts}
@@ -710,10 +821,24 @@ const CollectionDetailPage = () => {
             />
           )}
 
-          <S.SubHeader>
-            <S.FilterChips data-testid="type-filters">
+          {address && standardCollection && (
+            <ReviewFlow
+              collection={standardCollection}
+              address={address}
+              curation={curation}
+              events={events}
+              items={allItems ?? []}
+              canManage={canManage}
+              request={reviewRequest}
+              onRequestHandled={clearReviewRequest}
+            />
+          )}
+
+          <div className={styles.subHeader}>
+            <div className={styles.filterChips} data-testid="type-filters">
               {ITEM_TYPE_FILTERS.map(filter => (
-                <S.FilterChip
+                <button
+                  className={styles.filterChip}
                   key={filter}
                   type="button"
                   data-active={typeFilter === filter || undefined}
@@ -723,10 +848,10 @@ const CollectionDetailPage = () => {
                   {filter === ItemTypeFilter.WEARABLE && <WearableIcon />}
                   {filter === ItemTypeFilter.EMOTE && <EmoteIcon />}
                   {t(`collection_detail_page.filter.${filter}`, { count: counts[filter] })}
-                </S.FilterChip>
+                </button>
               ))}
-            </S.FilterChips>
-            <S.SubActions>
+            </div>
+            <div className={styles.subActions}>
               <Button
                 variant="secondary"
                 type="button"
@@ -742,18 +867,19 @@ const CollectionDetailPage = () => {
                   {t('collection_detail_page.add_items')}
                 </Button>
               )}
-            </S.SubActions>
-          </S.SubHeader>
+            </div>
+          </div>
 
           {isEmpty && !canAddItems ? (
-            <S.Panel data-testid="collection-no-items">
-              <S.DropArt src={addItemsArt} alt="" />
-              <S.PanelTitle>{t(`collection_detail_page.no_items.${typeFilter}`)}</S.PanelTitle>
-              <S.PanelText>{t('collection_detail_page.no_items.description')}</S.PanelText>
-            </S.Panel>
+            <section className={shared.panel} data-testid="collection-no-items">
+              <img className={styles.dropArt} src={addItemsArt} alt="" />
+              <h2 className={shared.panelTitle}>{t(`collection_detail_page.no_items.${typeFilter}`)}</h2>
+              <p className={shared.panelText}>{t('collection_detail_page.no_items.description')}</p>
+            </section>
           ) : isEmpty ? (
             <>
-              <S.Dropzone
+              <section
+                className={styles.dropzone}
                 data-testid="collection-empty"
                 data-dragging={isDragging || undefined}
                 onDragOver={event => {
@@ -763,29 +889,41 @@ const CollectionDetailPage = () => {
                 onDragLeave={() => setDragging(false)}
                 onDrop={onDropzoneDrop}
               >
-                <S.DropArt src={addItemsArt} alt="" />
-                <S.DropTitle data-desktop>{t('collection_detail_page.empty.title')}</S.DropTitle>
-                <S.DropTitle data-mobile>{t('collection_detail_page.empty.title_mobile')}</S.DropTitle>
-                <S.DropText data-desktop>
+                <img className={styles.dropArt} src={addItemsArt} alt="" />
+                <h3 className={styles.dropTitle} data-desktop>
+                  {t('collection_detail_page.empty.title')}
+                </h3>
+                <h3 className={styles.dropTitle} data-mobile>
+                  {t('collection_detail_page.empty.title_mobile')}
+                </h3>
+                <p className={styles.dropText} data-desktop>
                   {intl.formatMessage(
                     { id: 'collection_detail_page.empty.description' },
                     {
                       browse: chunks => (
-                        <S.BrowseLink type="button" data-testid="browse-files" onClick={openFileBrowser}>
+                        <button
+                          className={styles.browseLink}
+                          type="button"
+                          data-testid="browse-files"
+                          onClick={openFileBrowser}
+                        >
                           {chunks}
-                        </S.BrowseLink>
+                        </button>
                       )
                     }
                   )}
-                </S.DropText>
-                <S.DropText data-mobile>{t('collection_detail_page.empty.description_mobile')}</S.DropText>
-                <S.DropFormats>{t('collection_detail_page.empty.formats')}</S.DropFormats>
-              </S.Dropzone>
+                </p>
+                <p className={styles.dropText} data-mobile>
+                  {t('collection_detail_page.empty.description_mobile')}
+                </p>
+                <p className={styles.dropFormats}>{t('collection_detail_page.empty.formats')}</p>
+              </section>
             </>
           ) : (
             <>
-              <S.List data-testid="items-list">
-                <S.ListHeader
+              <div className={styles.list} data-testid="items-list">
+                <div
+                  className={cx(row.columns, styles.listHeader)}
                   data-with-play-mode={withPlayMode || undefined}
                   data-with-market={withMarket || undefined}
                   data-with-status={withStatus || undefined}
@@ -807,8 +945,8 @@ const CollectionDetailPage = () => {
                   {withStatus && (
                     <span data-testid="list-header-status">{t('collection_detail_page.list.status')}</span>
                   )}
-                  <S.ListHeaderActions>{t('collection_detail_page.list.actions')}</S.ListHeaderActions>
-                </S.ListHeader>
+                  <span className={styles.listHeaderActions}>{t('collection_detail_page.list.actions')}</span>
+                </div>
                 {results.map(item => (
                   <ItemListRow
                     key={item.id}
@@ -829,11 +967,11 @@ const CollectionDetailPage = () => {
                         ? openPriceEdit
                         : undefined
                     }
-                    editable={!compact && canEditItemDetails(collection, item, address)}
+                    editable={!compact && !reviewLocked && canEditItemDetails(collection, item, address)}
                     onRename={renameItem}
                     onEditThumbnail={item => thumbnailEditor.edit({ kind: 'item', item })}
                     contractAddress={collection.contractAddress}
-                    validation={validation.results.get(item.id)}
+                    validation={rowValidation(item)}
                     validationBlocks={blockOnErrors}
                     onShowValidation={showValidation}
                     actions={
@@ -844,21 +982,22 @@ const CollectionDetailPage = () => {
                           address={address}
                           sync={syncs.get(item.id)}
                           listing={withMarket ? listingFor(item) : undefined}
+                          reviewLocked={reviewLocked}
                         />
                       )
                     }
                   />
                 ))}
-              </S.List>
-              <S.FooterRow>
-                <S.ShowingCount data-testid="items-showing">
+              </div>
+              <div className={shared.footerRow}>
+                <span className={shared.showingCount} data-testid="items-showing">
                   {t('collection_detail_page.showing', {
                     range: pageRangeLabel(page, ITEMS_PAGE_SIZE, results.length),
                     total: filteredTotal
                   })}
-                </S.ShowingCount>
+                </span>
                 {pages > 1 && <Pagination page={page} pages={pages} onPageChange={goToPage} />}
-              </S.FooterRow>
+              </div>
             </>
           )}
 
@@ -898,7 +1037,13 @@ const CollectionDetailPage = () => {
               validation={publishValidation}
               blockOnErrors={blockOnErrors}
               onClose={() => setPublishView('closed')}
-              onPublished={() => setPublishView('success')}
+              onPublished={() => {
+                // With auto curation the review starts with the publication, so its modal is the confirmation.
+                if (autoCuration) {
+                  setPublishView('closed')
+                  setReviewRequest('reviewing')
+                } else setPublishView('success')
+              }}
             />
           )}
           {publishView === 'success' && <PublishSuccessModal onDone={() => setPublishView('closed')} />}
@@ -908,7 +1053,13 @@ const CollectionDetailPage = () => {
               flow="push_changes"
               validation={publishValidation}
               blockOnErrors={blockOnErrors}
-              onPass={() => setPushView('confirm')}
+              onPass={() => {
+                // A curator who asked for fixes sees them next: the request skips the automated review.
+                if (stage === ReviewStage.REJECTED_BY_CURATOR) {
+                  closePush()
+                  setReviewRequest('appeal')
+                } else setPushView('confirm')
+              }}
               onClose={closePush}
             />
           )}
@@ -928,16 +1079,44 @@ const CollectionDetailPage = () => {
               confirm={{
                 label: t(`collection_detail_page.${pushCopy}.confirm`),
                 onClick: () =>
-                  pushCuration.mutate(collection, {
-                    onSuccess: () => {
-                      setPushView('closed')
-                      showToast(t(`collection_detail_page.${pushCopy}.success`))
+                  pushCuration.mutate(
+                    { collection, note: (withPushNote && pushNote.trim()) || undefined },
+                    {
+                      onSuccess: () => {
+                        closePush()
+                        showToast(t(`collection_detail_page.${pushCopy}.success`))
+                      },
+                      // The automated review answers for itself: the day's reviews are spent, or one is running.
+                      onError: error => {
+                        if (error instanceof ValidationLimitError) {
+                          closePush()
+                          setReviewRequest('limit')
+                        } else if (isValidationRunning(error)) {
+                          closePush()
+                          showToast(t('review_flow.running'), { type: 'warn' })
+                        } else if (isCollectionBusy(error)) {
+                          closePush()
+                          showToast(t('review_flow.busy'), { type: 'warn' })
+                        }
+                      }
                     }
-                  }),
+                  ),
                 testId: 'push-changes-confirm'
               }}
               testId="push-changes-modal"
-            />
+            >
+              {withPushNote && (
+                <NoteField
+                  label={t('collection_detail_page.push_note.label')}
+                  value={pushNote}
+                  onChange={setPushNote}
+                  maxLength={NOTE_MAX_LENGTH}
+                  placeholder={t('collection_detail_page.push_note.placeholder')}
+                  disabled={pushCuration.isPending}
+                  testId="push-changes-note"
+                />
+              )}
+            </ConfirmModal>
           )}
           {isSending && session && (
             <SendItemsFlow
@@ -966,7 +1145,7 @@ const CollectionDetailPage = () => {
           {validationItem && (
             <ValidationResultsModal
               subject={toValidationSubject(validationItem)}
-              issues={validation.results.get(validationItem.id)?.issues ?? []}
+              issues={rowValidation(validationItem)?.issues ?? []}
               onRerun={() =>
                 rerunItemValidation(
                   validationItem,
@@ -1015,7 +1194,7 @@ const CollectionDetailPage = () => {
           )}
         </>
       )}
-    </S.Page>
+    </div>
   )
 }
 

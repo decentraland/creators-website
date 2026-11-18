@@ -19,7 +19,7 @@ import {
 } from '~/lib/preview'
 import { createPreviewBridge, type PreviewBridge } from '~/lib/previewBridge'
 import { useAvatarPreview } from '~/store/avatarPreview'
-import * as S from './AvatarPreview.styles'
+import styles from './AvatarPreview.module.css'
 
 export type { AvatarPreviewSource }
 
@@ -47,11 +47,11 @@ export function AvatarPreview(props: Props) {
   const testId = props.testId ?? 'avatar-preview'
   if (renderer === undefined) {
     return (
-      <S.Wrap data-testid={testId} data-loading>
-        <S.Loader aria-busy="true" data-testid={`${testId}-loading`}>
+      <div className={styles.wrap} data-testid={testId} data-loading>
+        <div className={styles.loader} aria-busy="true" data-testid={`${testId}-loading`}>
           <span className="spinner" aria-hidden />
-        </S.Loader>
-      </S.Wrap>
+        </div>
+      </div>
     )
   }
   return <MountedPreview {...props} unity={renderer === PreviewRenderer.UNITY} />
@@ -121,7 +121,7 @@ function MountedPreview({
   }, [options])
 
   return (
-    <S.Wrap data-testid={testId} data-loading={isLoading || undefined}>
+    <div className={styles.wrap} data-testid={testId} data-loading={isLoading || undefined}>
       <WearablePreview
         id={id}
         bodyShape={snapshot.bodyShape}
@@ -150,15 +150,19 @@ function MountedPreview({
         }}
       />
       {isLoading && (
-        <S.Loader aria-busy="true" data-testid={`${testId}-loading`}>
+        <div className={styles.loader} aria-busy="true" data-testid={`${testId}-loading`}>
           <span className="spinner" aria-hidden />
-        </S.Loader>
+        </div>
       )}
       {children && (
-        <S.Overlay data-testid={`${testId}-overlay`} data-emote-subject={isEmoteSubject(source) || undefined}>
+        <div
+          className={styles.overlay}
+          data-testid={`${testId}-overlay`}
+          data-emote-subject={isEmoteSubject(source) || undefined}
+        >
           {children}
-        </S.Overlay>
+        </div>
       )}
-    </S.Wrap>
+    </div>
   )
 }

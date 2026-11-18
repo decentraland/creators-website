@@ -1,5 +1,4 @@
-// Item domain model + wire mapping for builder-server, ported from the legacy builder
-// (src/modules/item + lib/api/builder.ts) so both apps read the same API identically.
+// Item domain model, ported from the legacy builder (src/modules/item).
 import {
   CollectionDisplayStatus,
   canManageCollectionItems,
@@ -94,39 +93,6 @@ export const IMAGE_WEARABLE_METRICS: ItemMetrics = {
   entities: 1
 }
 
-export type RemoteItem = {
-  id: string
-  name: string
-  description: string
-  thumbnail: string
-  video?: string | null
-  urn?: string | null
-  eth_address: string
-  collection_id: string | null
-  blockchain_item_id?: string | null
-  price: string | null
-  beneficiary: string | null
-  rarity: string | null
-  total_supply?: number | null
-  is_published: boolean
-  is_approved: boolean
-  in_catalyst: boolean
-  utility?: string | null
-  mappings?: Mappings | null
-  /** Linked items: whether the latest item curation covered a mapping (`isMappingComplete` on the wire). */
-  isMappingComplete?: boolean
-  type: ItemType
-  data: ItemData
-  metrics?: ItemMetrics
-  contents: Record<string, string>
-  content_hash?: string | null
-  local_content_hash?: string | null
-  /** Linked items: the hash of the entity the Catalyst holds, null until the item is approved. */
-  catalyst_content_hash?: string | null
-  created_at: string
-  updated_at: string
-}
-
 export type Item = {
   id: string
   name: string
@@ -163,71 +129,6 @@ export type Item = {
   contents: Record<string, string>
   createdAt: number
   updatedAt: number
-}
-
-export function fromRemoteItem(remote: RemoteItem): Item {
-  const item: Item = {
-    id: remote.id,
-    name: remote.name,
-    description: remote.description,
-    thumbnail: remote.thumbnail,
-    owner: remote.eth_address,
-    isPublished: remote.is_published,
-    isApproved: remote.is_approved,
-    inCatalyst: remote.in_catalyst,
-    type: remote.type,
-    data: remote.data,
-    metrics: remote.metrics,
-    contents: remote.contents,
-    createdAt: +new Date(remote.created_at),
-    updatedAt: +new Date(remote.updated_at)
-  }
-  if (remote.collection_id) item.collectionId = remote.collection_id
-  if (remote.price) item.price = remote.price
-  if (remote.beneficiary) item.beneficiary = remote.beneficiary
-  if (remote.rarity) item.rarity = remote.rarity
-  if (remote.urn) item.urn = remote.urn
-  if (remote.video) item.video = remote.video
-  if (remote.utility) item.utility = remote.utility
-  if (remote.total_supply !== undefined && remote.total_supply !== null) item.totalSupply = remote.total_supply
-  if (remote.blockchain_item_id) item.tokenId = remote.blockchain_item_id
-  if (remote.local_content_hash) item.currentContentHash = remote.local_content_hash
-  if (remote.content_hash) item.blockchainContentHash = remote.content_hash
-  if (remote.mappings) item.mappings = remote.mappings
-  if (remote.isMappingComplete !== undefined) item.isMappingComplete = remote.isMappingComplete
-  if (remote.catalyst_content_hash) item.catalystContentHash = remote.catalyst_content_hash
-  return item
-}
-
-/**
- * The wire shape for PUT /items/:id, byte-compatible with the legacy builder's toRemoteItem. Meant for
- * creating/updating draft items only: publication flags are always sent as false, since the server owns them.
- */
-export function toRemoteItem(item: Item): Omit<RemoteItem, 'created_at' | 'updated_at' | 'in_catalyst'> {
-  return {
-    id: item.id,
-    name: item.name,
-    description: item.description || '',
-    thumbnail: item.thumbnail,
-    video: item.video || null,
-    eth_address: item.owner,
-    collection_id: item.collectionId || null,
-    blockchain_item_id: item.tokenId || null,
-    price: item.price || null,
-    urn: item.urn || null,
-    beneficiary: item.beneficiary || null,
-    rarity: item.rarity || null,
-    total_supply: item.totalSupply === undefined ? null : item.totalSupply,
-    is_published: false,
-    is_approved: false,
-    utility: item.utility || null,
-    mappings: item.mappings ?? null,
-    type: item.type,
-    data: item.data,
-    metrics: item.metrics,
-    contents: item.contents,
-    content_hash: null
-  }
 }
 
 /** All distinct body shapes across an item's representations. */

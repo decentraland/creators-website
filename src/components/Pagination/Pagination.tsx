@@ -1,7 +1,7 @@
 import { ChevronLeftIcon, ChevronRightIcon } from '~/components/Icons'
 import { useTranslation } from '~/intl'
 import { pageWindow } from '~/lib/pagination'
-import * as S from './Pagination.styles'
+import styles from './Pagination.module.css'
 
 type Props = {
   page: number
@@ -13,17 +13,19 @@ type Props = {
 export function Pagination({ page, pages, onPageChange }: Props) {
   const { t } = useTranslation()
   return (
-    <S.Root data-testid="pagination">
-      <S.PageButton
+    <div className={styles.root} data-testid="pagination">
+      <button
+        className={styles.pageButton}
         type="button"
         aria-label={t('pagination.previous')}
         disabled={page <= 1}
         onClick={() => onPageChange(page - 1)}
       >
         <ChevronLeftIcon fontSize="small" />
-      </S.PageButton>
+      </button>
       {pageWindow(page, pages).map(n => (
-        <S.PageButton
+        <button
+          className={styles.pageButton}
           key={n}
           type="button"
           data-current={n === page || undefined}
@@ -31,16 +33,17 @@ export function Pagination({ page, pages, onPageChange }: Props) {
           onClick={() => onPageChange(n)}
         >
           {n}
-        </S.PageButton>
+        </button>
       ))}
-      <S.PageButton
+      <button
+        className={styles.pageButton}
         type="button"
         aria-label={t('pagination.next')}
         disabled={page >= pages}
         onClick={() => onPageChange(page + 1)}
       >
         <ChevronRightIcon fontSize="small" />
-      </S.PageButton>
-    </S.Root>
+      </button>
+    </div>
   )
 }
