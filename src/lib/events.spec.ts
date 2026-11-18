@@ -3,7 +3,6 @@ import { BodyShape } from '@dcl/schemas'
 import { ValidationSeverity } from '~/lib/validation'
 import {
   countValidationAttempts,
-  fromRemoteEvent,
   getAutomatedIssuesByItem,
   getCuratorVerdict,
   getCurrentVerdict,
@@ -34,30 +33,6 @@ let counter = 0
 function event(type: string, createdAt: number, payload: CollectionEvent['payload'] = {}): CollectionEvent {
   return { id: `e${++counter}`, collectionId: 'c1', type, actor: 'validator', actorAddress: null, payload, createdAt }
 }
-
-describe('fromRemoteEvent', () => {
-  it('maps the row, lowercases the actor and defaults an empty payload', () => {
-    expect(
-      fromRemoteEvent({
-        id: 'e1',
-        collection_id: 'c1',
-        type: 'review.approved',
-        actor: 'curator',
-        actor_address: '0xABC',
-        payload: null,
-        created_at: '2026-09-29T10:00:00Z'
-      })
-    ).toEqual({
-      id: 'e1',
-      collectionId: 'c1',
-      type: 'review.approved',
-      actor: 'curator',
-      actorAddress: '0xabc',
-      payload: {},
-      createdAt: Date.parse('2026-09-29T10:00:00Z')
-    })
-  })
-})
 
 describe('toCuratorIssues', () => {
   it('shows a finding once across body shapes, without the fix', () => {

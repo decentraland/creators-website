@@ -1,10 +1,7 @@
-import {
-  fromRemoteEvent,
-  type CollectionEvent,
-  type CollectionEventsPage,
-  type RemoteCollectionEvent
-} from '~/lib/events'
+import { type CollectionEvent, type CollectionEventsPage } from '~/lib/events'
+import { fromRemoteEvent } from './mappers'
 import { BuilderServerError, request } from './transport'
+import type { RemoteCollectionEvent, RemoteCollectionEventsPage } from './wire'
 
 const REVIEW_CONFLICT_STATUS = 409
 const COLLECTION_BUSY_STATUS = 503
@@ -107,7 +104,7 @@ export async function fetchCollectionEvents(
   collectionId: string,
   { page, limit }: { page: number; limit: number }
 ): Promise<CollectionEventsPage> {
-  const remote = await request<{ results: RemoteCollectionEvent[]; total: number; page: number; limit: number }>(
+  const remote = await request<RemoteCollectionEventsPage>(
     address,
     'GET',
     `/collections/${collectionId}/events`,

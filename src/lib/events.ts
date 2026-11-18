@@ -115,16 +115,6 @@ export type CollectionEventPayload = Omit<Partial<ValidationVerdictPayload>, 're
     itemId?: string
   }
 
-export type RemoteCollectionEvent = {
-  id: string
-  collection_id: string
-  type: string
-  actor: CollectionEventActor
-  actor_address?: string | null
-  payload?: CollectionEventPayload | null
-  created_at: string
-}
-
 export type CollectionEvent = {
   id: string
   collectionId: string
@@ -141,18 +131,6 @@ export type CollectionEventsPage = {
   total: number
   page: number
   limit: number
-}
-
-export function fromRemoteEvent(remote: RemoteCollectionEvent): CollectionEvent {
-  return {
-    id: remote.id,
-    collectionId: remote.collection_id,
-    type: remote.type,
-    actor: remote.actor,
-    actorAddress: remote.actor_address ? remote.actor_address.toLowerCase() : null,
-    payload: remote.payload ?? {},
-    createdAt: +new Date(remote.created_at)
-  }
 }
 
 const VERDICT_TYPES = new Set(['review.automated_passed', 'review.automated_rejected'])

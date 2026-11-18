@@ -14,7 +14,6 @@ import {
   curationListUrl,
   defaultAssignees,
   rememberCurationSearch,
-  fromRemoteCuration,
   getCurationState,
   getCuratorState,
   getReviewActions,
@@ -24,7 +23,6 @@ import {
   isCommitteeMember,
   orderCurators,
   parseCurationFilters,
-  toCurationQueryString,
   toMultiParam,
   type CollectionCuration
 } from './curation'
@@ -65,31 +63,6 @@ function curation(overrides: Partial<CollectionCuration> = {}): CollectionCurati
 }
 
 const reviewedBefore = { reviewedAt: CREATED + 1000 }
-
-describe('fromRemoteCuration', () => {
-  it('maps the row and lowercases the assignee', () => {
-    expect(
-      fromRemoteCuration({
-        id: 'r1',
-        collection_id: 'c1',
-        status: 'pending',
-        assignee: '0xABC',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z'
-      })
-    ).toEqual({
-      id: 'r1',
-      collectionId: 'c1',
-      status: 'pending',
-      assignee: '0xabc',
-      reviewedBy: null,
-      rejectionReasons: null,
-      rejectionMessage: null,
-      createdAt: Date.parse('2026-01-01T00:00:00Z'),
-      updatedAt: Date.parse('2026-01-02T00:00:00Z')
-    })
-  })
-})
 
 describe('isCommitteeMember', () => {
   it('matches addresses case-insensitively and fails closed without data', () => {
@@ -272,45 +245,6 @@ describe('curation filters', () => {
     expect(toMultiParam([], defaults)).toEqual(['all'])
     expect(toMultiParam([CurationStatusFilter.REJECTED], defaults)).toEqual([CurationStatusFilter.REJECTED])
     expect(toMultiParam(['0xme', UNASSIGNED], defaultAssignees('0xME'))).toBeNull()
-  })
-
-  it('builds the committee list query for the picked kind of published collections', () => {
-    const filters = parseCurationFilters(
-      new URLSearchParams(
-        'status=approved&status=to_review&assignee=0xABCDEF0123456789ABCDEF0123456789ABCDEF01&assignee=unassigned&review_type=updates&q=hat&sort=NAME_ASC&page=2&tag=Summer&type=standard'
-      ),
-      ME
-    )
-    const query = new URLSearchParams(toCurationQueryString(filters))
-    // To review covers a pending request with or without a curator, which builder-server keeps apart.
-    expect(query.getAll('status')).toEqual(['approved', 'to_review', 'under_review'])
-    expect(query.getAll('assignee')).toEqual(['0xabcdef0123456789abcdef0123456789abcdef01', 'unassigned'])
-    expect(Object.fromEntries(query)).toMatchObject({
-      is_published: 'true',
-      review_type: 'updates',
-      type: 'standard',
-      sort: 'NAME_ASC',
-      q: 'hat',
-      tag: 'summer',
-      page: '2',
-      limit: '12'
-    })
-  })
-
-  it('leaves cleared filters out of the query, so standard and linked collections list together', () => {
-    const query = new URLSearchParams(
-      toCurationQueryString(parseCurationFilters(new URLSearchParams('status=all&assignee=all'), ME))
-    )
-    expect(query.has('status')).toBe(false)
-    expect(query.has('assignee')).toBe(false)
-    expect(query.has('review_type')).toBe(false)
-    expect(query.has('tag')).toBe(false)
-    expect(query.has('type')).toBe(false)
-  })
-
-  it('asks for third-party collections under the Linked type', () => {
-    const query = new URLSearchParams(toCurationQueryString(parseCurationFilters(new URLSearchParams('type=linked'))))
-    expect(query.get('type')).toBe('third_party')
   })
 })
 
@@ -503,25 +437,6 @@ describe('getReviewStage', () => {
     ]
   ])('%s', (_, subject, request, events, expected) => {
     expect(getReviewStage(subject, request, events)).toBe(expected)
-  })
-
-  it('maps the reviewer and the rejection fields from the row', () => {
-    expect(
-      fromRemoteCuration({
-        id: 'r1',
-        collection_id: 'c1',
-        status: 'rejected',
-        reviewed_by: '0xCURATOR',
-        rejection_reasons: ['clipping', 'bogus', 'other'],
-        rejection_message: 'Fix the sleeves',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-02T00:00:00Z'
-      })
-    ).toMatchObject({
-      reviewedBy: '0xcurator',
-      rejectionReasons: ['clipping', 'other'],
-      rejectionMessage: 'Fix the sleeves'
-    })
   })
 })
 
