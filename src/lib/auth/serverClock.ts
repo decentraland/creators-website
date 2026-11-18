@@ -1,6 +1,7 @@
 // Signed requests (ADR-44) carry the device's clock as their timestamp, and the servers reject one more than
-// 60s in their past. A device clock that is behind therefore has every signed request refused: builder-server
-// answers 401 "Unauthenticated", credits-server "Expired signature". This module measures how far the device
+// 60s off their own clock, in either direction. A device clock that is off therefore has every signed request
+// refused: builder-server answers 401 "Unauthenticated", credits-server "Expired signature" (or "too far in the
+// future" when the clock is ahead). This module measures how far the device
 // clock is from the servers' and lets signing correct for it, so a wrong device clock no longer locks the
 // creator out.
 import { config } from '~/config'
@@ -12,9 +13,8 @@ import { config } from '~/config'
 const MAX_UNCORRECTED_DRIFT_MS = 30 * 1000
 
 /**
- * A measured offset beyond this is not trusted: a clock that far off is not a drifting device, and since
- * the servers accept future timestamps, signing with a wild correction would stretch how long a
- * signature stays valid.
+ * A measured offset beyond this is not trusted: a clock that far off is not a drifting device, so the
+ * reading is more likely wrong, and applying it would get every later signed request refused.
  */
 const MAX_CORRECTION_MS = 7 * 24 * 60 * 60 * 1000
 
