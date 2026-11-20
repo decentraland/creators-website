@@ -16,7 +16,7 @@ import { BuilderServerError, COLLECTION_LOCKED_STATUS } from '~/lib/builder'
 import { MAX_THUMBNAIL_FILE_SIZE, THUMBNAIL_PATH, toMB } from '~/lib/itemFiles'
 import { isItemTooBigError } from '~/lib/itemSize'
 import { ItemType } from '~/lib/items'
-import { ImageType, dataURLToBlob, getImageType, resizeImage, blobToDataURL } from '~/lib/media'
+import { ImageType, compressPngBlob, dataURLToBlob, getImageType, resizeImage, blobToDataURL } from '~/lib/media'
 import { retryWhilePreviewReloads, toEmoteWithBlobs, toWearableWithBlobs } from '~/lib/preview'
 import styles from './ThumbnailModal.module.css'
 
@@ -45,22 +45,32 @@ export function getThumbnailErrorMessage(err: unknown): { key: string; params?: 
   return { key: 'thumbnail_modal.capture_failed' }
 }
 
-export function thumbnailPatchFromDataURL(contents: Record<string, Blob>, thumbnail: string): ThumbnailPatch {
-  const thumbnailBlob = dataURLToBlob(thumbnail)
-  if (!thumbnailBlob) throw new Error('Could not decode the thumbnail')
+/**
+ * The cap is checked on the thumbnail as a save stores it, quantized to the thumbnail palette (compressPngBlob). A raw
+ * capture weighs what the detail in the frame costs, so checking it refused the same item once zoomed in. Quantized,
+ * a real capture stays well under 1MB (a detailed frame filling the square weighs about 0.6MB); only near-random
+ * pixels, such as opaque noise filling the frame, still cross it.
+ */
+async function thumbnailPatchFromPng(contents: Record<string, Blob>, png: Blob): Promise<ThumbnailPatch> {
+  const thumbnailBlob = await compressPngBlob(png)
   if (thumbnailBlob.size > MAX_THUMBNAIL_FILE_SIZE) throw new ThumbnailTooBigError()
   return {
-    thumbnail,
+    thumbnail: await blobToDataURL(thumbnailBlob),
     contents: { ...contents, [THUMBNAIL_PATH]: thumbnailBlob },
     isAutoThumbnail: false
   }
 }
 
+async function thumbnailPatchFromDataURL(contents: Record<string, Blob>, thumbnail: string): Promise<ThumbnailPatch> {
+  const png = dataURLToBlob(thumbnail)
+  if (!png) throw new Error('Could not decode the thumbnail')
+  return thumbnailPatchFromPng(contents, png)
+}
+
 /** Builds the patch for a user-picked PNG, resized to the thumbnail size. Throws ThumbnailFormatError for non-PNGs. */
 export async function thumbnailPatchFromFile(contents: Record<string, Blob>, file: File): Promise<ThumbnailPatch> {
   if ((await getImageType(file)) !== ImageType.PNG) throw new ThumbnailFormatError()
-  const resized = await resizeImage(file, THUMBNAIL_SIZE, THUMBNAIL_SIZE)
-  return thumbnailPatchFromDataURL(contents, await blobToDataURL(resized))
+  return thumbnailPatchFromPng(contents, await resizeImage(file, THUMBNAIL_SIZE, THUMBNAIL_SIZE))
 }
 
 type Props = {
@@ -122,7 +132,7 @@ export function ThumbnailModal({ type, contents, loadError = false, onSave, onCl
         const screenshot = await retryWhilePreviewReloads(() =>
           controller.scene.getScreenshot(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
         )
-        await onSave(thumbnailPatchFromDataURL(contents!, screenshot))
+        await onSave(await thumbnailPatchFromDataURL(contents!, screenshot))
       } catch (err) {
         setError(errorText(err))
         setSaving(null)
