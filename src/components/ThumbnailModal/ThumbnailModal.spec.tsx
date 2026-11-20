@@ -7,6 +7,7 @@ import UPNG from 'upng-js'
 import { TranslationProvider } from '~/intl'
 import { ItemFileError, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
+import { blobToDataURL, dataURLToBlob } from '~/lib/media'
 import { ThumbnailModal } from './ThumbnailModal'
 
 let renderer: PreviewRenderer | undefined
@@ -132,13 +133,33 @@ describe('ThumbnailModal', () => {
     expect(raw.byteLength).toBeGreaterThan(THUMBNAIL_CAP)
     getScreenshot.mockResolvedValue(`data:image/png;base64,${Buffer.from(raw).toString('base64')}`)
     renderer = PreviewRenderer.UNITY
+    const { blobToDataURL: realBlobToDataURL } = await vi.importActual<typeof import('~/lib/media')>('~/lib/media')
+    vi.mocked(blobToDataURL).mockImplementationOnce(realBlobToDataURL)
     const { onSave } = renderModal({ 'hat.glb': new Blob(['glb']) })
 
     act(() => previewProps?.onLoad?.())
     await userEvent.click(screen.getByTestId('thumbnail-capture'))
 
     await waitFor(() => expect(onSave).toHaveBeenCalled())
-    expect(onSave.mock.calls[0][0].contents[THUMBNAIL_PATH].size).toBeLessThanOrEqual(THUMBNAIL_CAP)
+    const [patch] = onSave.mock.calls[0]
+    expect(patch.contents[THUMBNAIL_PATH].size).toBeLessThanOrEqual(THUMBNAIL_CAP)
+    // What the editor shows is what gets stored.
+    expect(dataURLToBlob(patch.thumbnail)?.size).toBe(patch.contents[THUMBNAIL_PATH].size)
     expect(screen.queryByTestId('thumbnail-error')).not.toBeInTheDocument()
+  })
+
+  it('refuses a capture still over the cap once stored, ready to try again', async () => {
+    // Bytes that do not decode stay as they are, over the cap.
+    const undecodable = Buffer.alloc(THUMBNAIL_CAP + 1, 1).toString('base64')
+    getScreenshot.mockResolvedValue(`data:image/png;base64,${undecodable}`)
+    renderer = PreviewRenderer.UNITY
+    const { onSave } = renderModal({ 'hat.glb': new Blob(['glb']) })
+
+    act(() => previewProps?.onLoad?.())
+    await userEvent.click(screen.getByTestId('thumbnail-capture'))
+
+    expect(await screen.findByTestId('thumbnail-error')).toHaveTextContent('The thumbnail is too big')
+    expect(onSave).not.toHaveBeenCalled()
+    expect(screen.getByTestId('thumbnail-capture')).toBeEnabled()
   })
 })

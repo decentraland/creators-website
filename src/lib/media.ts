@@ -136,8 +136,8 @@ const quantizedTo = new WeakMap<Blob, number>()
  * Re-encodes a PNG with an indexed palette, keeping alpha. There is no perceptual floor, only a size one: the
  * original blob is returned by reference when the result is not smaller, when decoding fails, for non-PNGs and
  * for images too large to decode in the page. A blob this function already returned for a palette no larger is
- * handed back as it is: quantizing it again gives the same pixels after a full decode, which a thumbnail checked
- * against its cap in the thumbnail modal would otherwise pay twice, there and again at save.
+ * handed back as it is: quantizing it again gains nothing worth a full decode, which a thumbnail checked against its
+ * cap in the thumbnail modal would otherwise pay twice, there and again at save.
  */
 export async function compressPngBlob(blob: Blob, colors = THUMBNAIL_PALETTE_COLORS): Promise<Blob> {
   if (blob.type && blob.type !== 'image/png') return blob
