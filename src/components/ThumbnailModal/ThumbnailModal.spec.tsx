@@ -3,6 +3,7 @@ import { type ReactNode } from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { PreviewRenderer } from '@dcl/schemas'
 import userEvent from '@testing-library/user-event'
+import UPNG from 'upng-js'
 import { TranslationProvider } from '~/intl'
 import { ItemFileError, THUMBNAIL_PATH } from '~/lib/itemFiles'
 import { ItemType } from '~/lib/items'
@@ -24,6 +25,13 @@ vi.mock('~/components/WearablePreview', () => ({
   TranslationControls: () => null
 }))
 vi.mock('~/components/ZoomControls', () => ({ ZoomControls: () => null }))
+
+// A cap small enough for a test image to cross it.
+const { THUMBNAIL_CAP } = vi.hoisted(() => ({ THUMBNAIL_CAP: 2_000 }))
+vi.mock('~/lib/itemFiles', async importOriginal => ({
+  ...(await importOriginal<typeof import('~/lib/itemFiles')>()),
+  MAX_THUMBNAIL_FILE_SIZE: THUMBNAIL_CAP
+}))
 
 // jsdom has no canvas: resizing hands back a fixed PNG data URL.
 const PNG_DATA_URL = 'data:image/png;base64,iVBORw0KGgo='
@@ -109,6 +117,28 @@ describe('ThumbnailModal', () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalled(), { timeout: 3000 })
     expect(onSave.mock.calls[0][0]).toMatchObject({ thumbnail: PNG_DATA_URL, isAutoThumbnail: false })
+    expect(screen.queryByTestId('thumbnail-error')).not.toBeInTheDocument()
+  })
+
+  it('saves a capture whose raw PNG is over the cap but fits once stored, as a zoomed-in one is', async () => {
+    // Busy pixels whose raw PNG weighs about twice its quantized one. Not true noise: upng-js writes a truncated
+    // lossless PNG for data that does not compress at all.
+    let seed = 7
+    const rgba = new Uint8Array(64 * 64 * 4).map(() => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff
+      return seed & 0xff
+    })
+    const raw = UPNG.encode([rgba.buffer], 64, 64, 0)
+    expect(raw.byteLength).toBeGreaterThan(THUMBNAIL_CAP)
+    getScreenshot.mockResolvedValue(`data:image/png;base64,${Buffer.from(raw).toString('base64')}`)
+    renderer = PreviewRenderer.UNITY
+    const { onSave } = renderModal({ 'hat.glb': new Blob(['glb']) })
+
+    act(() => previewProps?.onLoad?.())
+    await userEvent.click(screen.getByTestId('thumbnail-capture'))
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    expect(onSave.mock.calls[0][0].contents[THUMBNAIL_PATH].size).toBeLessThanOrEqual(THUMBNAIL_CAP)
     expect(screen.queryByTestId('thumbnail-error')).not.toBeInTheDocument()
   })
 })
