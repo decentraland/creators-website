@@ -1,6 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import UPNG from 'upng-js'
 import { ImageType, compressPngBlob, dataURLToBlob, getImageType, readPngDimensions } from './media'
+
+// The real decoder, watched: quantizing a 1024px thumbnail costs about a second, mostly decoding.
+vi.mock('upng-js', async importOriginal => {
+  const actual = (await importOriginal<{ default: typeof UPNG }>()).default
+  return { default: { ...actual, decode: vi.fn(actual.decode) } }
+})
 
 // 1x1 transparent PNG
 const PNG_DATA_URL =
@@ -48,6 +54,15 @@ describe('compressPngBlob', () => {
     expect(compressed.type).toBe('image/png')
     const decoded = UPNG.decode(await compressed.arrayBuffer())
     expect([decoded.width, decoded.height]).toEqual([64, 64])
+  })
+
+  it('hands back its own result without decoding it again, unless asked for a smaller palette', async () => {
+    const quantized = await compressPngBlob(noisyPng())
+    vi.mocked(UPNG.decode).mockClear()
+    expect(await compressPngBlob(quantized)).toBe(quantized)
+    expect(UPNG.decode).not.toHaveBeenCalled()
+
+    expect((await compressPngBlob(quantized, 16)).size).toBeLessThan(quantized.size)
   })
 
   it('leaves a PNG whose header claims a huge canvas untouched instead of decoding it', async () => {

@@ -127,12 +127,22 @@ export function readPngDimensions(buffer: ArrayBuffer): { width: number; height:
 }
 
 /**
+ * Each blob compressPngBlob handed back from a quantizing pass (the input itself when quantizing did not shrink it),
+ * with the palette size of that pass. upng-js reads 0 colours as lossless, so a lossless pass is never recorded.
+ */
+const quantizedTo = new WeakMap<Blob, number>()
+
+/**
  * Re-encodes a PNG with an indexed palette, keeping alpha. There is no perceptual floor, only a size one: the
  * original blob is returned by reference when the result is not smaller, when decoding fails, for non-PNGs and
- * for images too large to decode in the page.
+ * for images too large to decode in the page. A blob this function already returned for a palette no larger is
+ * handed back as it is: quantizing it again gives the same pixels after a full decode, which a thumbnail checked
+ * against its cap in the thumbnail modal would otherwise pay twice, there and again at save.
  */
 export async function compressPngBlob(blob: Blob, colors = THUMBNAIL_PALETTE_COLORS): Promise<Blob> {
   if (blob.type && blob.type !== 'image/png') return blob
+  const previous = quantizedTo.get(blob)
+  if (previous !== undefined && previous <= colors) return blob
   try {
     const buffer = await blob.arrayBuffer()
     // Decoding is unbounded: a tiny file whose header claims a huge canvas would hang the tab.
@@ -143,7 +153,9 @@ export async function compressPngBlob(blob: Blob, colors = THUMBNAIL_PALETTE_COL
     const frames = UPNG.toRGBA8(image)
     const encoded = UPNG.encode(frames, image.width, image.height, colors)
     const compressed = new Blob([encoded], { type: 'image/png' })
-    return compressed.size > 0 && compressed.size < blob.size ? compressed : blob
+    const result = compressed.size > 0 && compressed.size < blob.size ? compressed : blob
+    if (colors > 0) quantizedTo.set(result, colors)
+    return result
   } catch {
     return blob
   }
