@@ -43,6 +43,19 @@ vi.mock('~/lib/media', async importOriginal => ({
   blobToDataURL: vi.fn().mockResolvedValue('data:image/png;base64,iVBORw0KGgo=')
 }))
 
+/**
+ * Busy pixels whose raw PNG weighs about twice its quantized one. Not true noise: upng-js writes a truncated lossless
+ * PNG for data that does not compress at all.
+ */
+function busyPng(size: number): ArrayBuffer {
+  let seed = 7
+  const rgba = new Uint8Array(size * size * 4).map(() => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff
+    return seed & 0xff
+  })
+  return UPNG.encode([rgba.buffer], size, size, 0)
+}
+
 function renderModal(contents: Record<string, Blob> | null = null, onSave = vi.fn()) {
   const wrapper = ({ children }: { children: ReactNode }) => <TranslationProvider>{children}</TranslationProvider>
   render(<ThumbnailModal type={ItemType.WEARABLE} contents={contents} onSave={onSave} onClose={vi.fn()} />, {
@@ -122,14 +135,7 @@ describe('ThumbnailModal', () => {
   })
 
   it('saves a capture whose raw PNG is over the cap but fits once stored, as a zoomed-in one is', async () => {
-    // Busy pixels whose raw PNG weighs about twice its quantized one. Not true noise: upng-js writes a truncated
-    // lossless PNG for data that does not compress at all.
-    let seed = 7
-    const rgba = new Uint8Array(64 * 64 * 4).map(() => {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff
-      return seed & 0xff
-    })
-    const raw = UPNG.encode([rgba.buffer], 64, 64, 0)
+    const raw = busyPng(64)
     expect(raw.byteLength).toBeGreaterThan(THUMBNAIL_CAP)
     getScreenshot.mockResolvedValue(`data:image/png;base64,${Buffer.from(raw).toString('base64')}`)
     renderer = PreviewRenderer.UNITY
@@ -148,10 +154,13 @@ describe('ThumbnailModal', () => {
     expect(screen.queryByTestId('thumbnail-error')).not.toBeInTheDocument()
   })
 
-  it('refuses a capture still over the cap once stored, ready to try again', async () => {
-    // Bytes that do not decode stay as they are, over the cap.
-    const undecodable = Buffer.alloc(THUMBNAIL_CAP + 1, 1).toString('base64')
-    getScreenshot.mockResolvedValue(`data:image/png;base64,${undecodable}`)
+  it.each([
+    // Twice the side of the capture above: still over the cap once quantized.
+    ['a PNG still over it once quantized', Buffer.from(busyPng(128)).toString('base64')],
+    // Bytes that do not decode stay as they are.
+    ['bytes that do not decode', Buffer.alloc(THUMBNAIL_CAP + 1, 1).toString('base64')]
+  ])('refuses a capture over the cap once stored (%s), ready to try again', async (_, capture) => {
+    getScreenshot.mockResolvedValue(`data:image/png;base64,${capture}`)
     renderer = PreviewRenderer.UNITY
     const { onSave } = renderModal({ 'hat.glb': new Blob(['glb']) })
 

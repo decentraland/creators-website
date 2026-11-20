@@ -137,7 +137,8 @@ const quantizedTo = new WeakMap<Blob, number>()
  * original blob is returned by reference when the result is not smaller, when decoding fails, for non-PNGs and
  * for images too large to decode in the page. A blob this function already returned for a palette no larger is
  * handed back as it is: quantizing it again gains nothing worth a full decode, which a thumbnail checked against its
- * cap in the thumbnail modal would otherwise pay twice, there and again at save.
+ * cap in the thumbnail modal would otherwise pay twice, there and again at save. The memory is per Blob object: a copy
+ * (a data URL turned back into a blob) is decoded and quantized again, with the same result.
  */
 export async function compressPngBlob(blob: Blob, colors = THUMBNAIL_PALETTE_COLORS): Promise<Blob> {
   if (blob.type && blob.type !== 'image/png') return blob

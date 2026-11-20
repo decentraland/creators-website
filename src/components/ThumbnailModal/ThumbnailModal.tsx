@@ -47,8 +47,9 @@ export function getThumbnailErrorMessage(err: unknown): { key: string; params?: 
 
 /**
  * The cap is checked on the thumbnail as a save stores it, quantized to the thumbnail palette (compressPngBlob). A raw
- * capture weighs what the detail in the frame costs, so checking it refused the same item once zoomed in; quantized,
- * even a 1024px frame of pure noise stays under 1MB.
+ * capture weighs what the detail in the frame costs, so checking it refused the same item once zoomed in. Quantized,
+ * a real capture stays well under 1MB (a detailed frame filling the square weighs about 0.6MB); only near-random
+ * pixels, such as opaque noise filling the frame, still cross it.
  */
 async function thumbnailPatchFromPng(contents: Record<string, Blob>, png: Blob): Promise<ThumbnailPatch> {
   const thumbnailBlob = await compressPngBlob(png)
