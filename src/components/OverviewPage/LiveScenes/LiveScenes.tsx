@@ -34,7 +34,7 @@ const LiveScenes = () => {
               onClick={trackClick}
             >
               <div className={styles.sceneImage}>
-                <img src={scene.thumbnail} alt="" loading="lazy" />
+                {scene.thumbnail && <img src={scene.thumbnail} alt="" loading="lazy" />}
                 <span className={styles.onlineBadge}>
                   {t('overview.live_scenes.online', { count: scene.usersTotalCount })}
                 </span>

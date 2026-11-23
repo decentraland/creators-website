@@ -67,4 +67,16 @@ describe('LiveScenes', () => {
     fireEvent.click(cards[0])
     expect(track).toHaveBeenCalledWith('Click', { place: 'Creators Live Scenes', title: 'Busy Scene' })
   })
+
+  it('shows the thumbnail only when the scene has one, leaving the fallback cover otherwise', () => {
+    feed.data = [
+      aScene({ id: 'with', usersTotalCount: 10 }),
+      aScene({ id: 'without', name: 'No Thumbnail', usersTotalCount: 5, thumbnail: undefined })
+    ]
+    renderSection()
+    const cards = screen.getAllByTestId('overview-scene-card')
+    expect(cards[0].querySelector('img')).toHaveAttribute('src', 'https://img.example.com/scene.png')
+    expect(cards[1].querySelector('img')).toBeNull()
+    expect(cards[1]).toHaveTextContent('No Thumbnail')
+  })
 })

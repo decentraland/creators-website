@@ -9,7 +9,8 @@ export type HotScene = {
   baseCoords: [number, number]
   usersTotalCount: number
   parcels: Array<[number, number]>
-  thumbnail: string
+  /** Absent when the scene declares no navmap thumbnail among its files. */
+  thumbnail?: string
 }
 
 const FETCH_TIMEOUT_MS = 10_000
