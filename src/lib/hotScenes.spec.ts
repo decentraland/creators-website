@@ -32,6 +32,12 @@ describe('fetchHotScenes', () => {
     await expect(fetchHotScenes()).resolves.toEqual([good])
   })
 
+  it('keeps scenes without a thumbnail, since the card has a fallback for it', async () => {
+    const noThumbnail = aScene({ id: 'no-thumbnail', thumbnail: undefined })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okResponse([noThumbnail])))
+    await expect(fetchHotScenes()).resolves.toEqual([noThumbnail])
+  })
+
   it('treats a payload that is not a list as no scenes', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okResponse({ error: 'shape' })))
     await expect(fetchHotScenes()).resolves.toEqual([])
